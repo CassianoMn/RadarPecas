@@ -56,15 +56,15 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ## 1. Estrutura inicial
 
-- [ ] Criar solução `.NET 8` para o back-end.
-- [ ] Criar projetos separados para API, domínio, aplicação e infraestrutura.
-- [ ] Criar projeto React 18 + TypeScript + Vite.
-- [ ] Configurar ESLint/formatter no front-end.
-- [ ] Configurar tratamento global de erros no back-end.
-- [ ] Criar configuração de ambientes `Development` e `Production`.
-- [ ] Configurar `.gitignore` para .NET, Node, IDEs e arquivos de ambiente.
-- [ ] Criar arquivo `.env.example` sem credenciais reais.
-- [ ] Configurar CORS para comunicação entre front-end e API.
+- [x] Criar solução .NET 8 para o back-end.
+- [x] Criar projetos separados para API, domínio, aplicação e infraestrutura.
+- [x] Criar projeto React 18 + TypeScript + Vite.
+- [x] Configurar ESLint/formatter no front-end.
+- [x] Configurar tratamento global de erros no back-end.
+- [x] Criar configuração de ambientes Development e Production.
+- [x] Configurar .gitignore para .NET, Node, IDEs e arquivos de ambiente.
+- [x] Criar arquivo .env.example sem credenciais reais.
+- [x] Configurar CORS para comunicação entre front-end e API.
 
 ## 2. Banco de dados
 
@@ -332,11 +332,11 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ### Fase 1 — Fundação
 
-- [ ] Estrutura do back-end.
-- [ ] Estrutura do front-end.
+- [x] Estrutura do back-end.
+- [x] Estrutura do front-end.
 - [ ] PostgreSQL + PostGIS.
 - [ ] Migrations.
-- [ ] Configuração de ambiente.
+- [x] Configuração de ambiente.
 - [ ] Comunicação front-end ↔ API.
 
 ### Fase 2 — Acesso
