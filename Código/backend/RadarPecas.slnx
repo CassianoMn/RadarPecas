@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RadarPecas.Api/RadarPecas.Api.csproj" />
+  <Project Path="RadarPecas.Application/RadarPecas.Application.csproj" />
+  <Project Path="RadarPecas.Domain/RadarPecas.Domain.csproj" />
+  <Project Path="RadarPecas.Infrastructure/RadarPecas.Infrastructure.csproj" />
+</Solution>
