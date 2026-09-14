@@ -1,6 +1,16 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/useAuth';
 
+function initials(name: string): string {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -16,22 +26,26 @@ export function Layout() {
         <Link className="brand" to="/">
           RadarPeças
         </Link>
-        <nav className="nav">
-          <NavLink to="/">Início</NavLink>
+        <nav className="nav" aria-label="Principal">
+          <NavLink to="/">Explorar</NavLink>
           <NavLink to="/busca">Buscar</NavLink>
-          <NavLink to="/garagem">Garagem</NavLink>
           <NavLink to="/lojas">Lojas</NavLink>
         </nav>
         <div className="userbox">
+          <Link className="btn" to="/garagem">
+            Garagem Virtual
+          </Link>
           {user ? (
             <>
-              <span>{user.nome}</span>
+              <span className="avatar" title={user.nome}>
+                {initials(user.nome)}
+              </span>
               <button className="btn btn-ghost" type="button" onClick={handleLogout}>
                 Sair
               </button>
             </>
           ) : (
-            <Link className="btn" to="/login">
+            <Link className="btn btn-outline" to="/login">
               Entrar
             </Link>
           )}
