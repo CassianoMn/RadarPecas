@@ -136,8 +136,7 @@ using (var scope = app.Services.CreateScope())
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<RadarPecasDbContext>();
         logger.LogInformation("Verificando estrutura do banco de dados...");
-        await dbContext.Database.EnsureCreatedAsync();
-        await DatabaseSeeder.SeedAsync(dbContext, logger);
+        await DatabaseInitializer.InitializeAsync(dbContext, logger);
     }
     catch (Exception ex)
     {

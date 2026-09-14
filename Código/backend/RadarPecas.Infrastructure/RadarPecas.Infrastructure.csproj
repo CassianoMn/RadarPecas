@@ -18,4 +18,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Schema canônico do banco: fonte única em AnaliseProjeto/, copiado p/ saída -->
+  <ItemGroup>
+    <Content Include="..\..\..\AnaliseProjeto\DB_radarPecas.sql" Link="DbScripts\DB_radarPecas.sql">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
