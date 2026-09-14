@@ -1,18 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { api, getToken, setToken } from '../lib/api';
+import { api, ApiError, getToken, setToken } from '../lib/api';
 import { AuthContext } from './auth-context';
 
 export interface User {
   id: string;
   nome: string;
   email: string;
-  tipo: string;
+  tipoUsuario: string;
+  lojaId?: string | null;
+  nomeLoja?: string | null;
 }
 
 interface LoginResponse {
   token: string;
-  usuario: User;
+  userId: string;
+  nome: string;
+  email: string;
+  tipoUsuario: string;
+  lojaId?: string | null;
+  nomeLoja?: string | null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -43,8 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       body: JSON.stringify({ email, senha }),
     });
+    if (!data?.token || !data?.userId) {
+      throw new ApiError('Resposta de login inválida.', 500);
+    }
     setToken(data.token);
-    setUser(data.usuario);
+    setUser({
+      id: data.userId,
+      nome: data.nome,
+      email: data.email,
+      tipoUsuario: data.tipoUsuario,
+      lojaId: data.lojaId,
+      nomeLoja: data.nomeLoja,
+    });
   }, []);
 
   const logout = useCallback(() => {
