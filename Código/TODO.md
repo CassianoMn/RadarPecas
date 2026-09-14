@@ -70,135 +70,135 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ### PostgreSQL + PostGIS
 
-- [ ] Criar banco PostgreSQL para desenvolvimento.
-- [ ] Habilitar extensão PostGIS.
-- [ ] Criar migrations iniciais.
-- [ ] Configurar conexão do ASP.NET Core com PostgreSQL.
-- [ ] Criar índices para campos utilizados em buscas frequentes.
-- [ ] Criar índice espacial GiST para localização das lojas.
-- [ ] Criar seed inicial para modelos de motocicletas.
-- [ ] Criar seed de categorias de peças.
+- [x] Criar banco PostgreSQL para desenvolvimento.
+- [x] Habilitar extensão PostGIS.
+- [x] Criar migrations iniciais.
+- [x] Configurar conexão do ASP.NET Core com PostgreSQL.
+- [x] Criar índices para campos utilizados em buscas frequentes.
+- [x] Criar índice espacial GiST para localização das lojas.
+- [x] Criar seed inicial para modelos de motocicletas.
+- [x] Criar seed de categorias de peças.
 
 ### Entidades
 
-- [ ] Implementar `Usuario`.
-- [ ] Implementar `Loja`.
-- [ ] Implementar `GaragemVirtual`.
-- [ ] Implementar `ModeloMoto`.
-- [ ] Implementar `Peca`.
-- [ ] Implementar `CompatibilidadePecaMoto`.
-- [ ] Implementar `EstoqueLoja`.
-- [ ] Implementar `AvaliacaoLoja`.
-- [ ] Implementar `EstatisticaOferta`.
-- [ ] Mapear relacionamentos e cardinalidades.
-- [ ] Definir constraints de integridade.
-- [ ] Definir tratamento para exclusão/ativação de registros.
-- [ ] Mapear especificações técnicas das peças em `JSONB`.
+- [x] Implementar `Usuario`.
+- [x] Implementar `Loja`.
+- [x] Implementar `GaragemVirtual`.
+- [x] Implementar `ModeloMoto`.
+- [x] Implementar `Peca`.
+- [x] Implementar `CompatibilidadePecaMoto`.
+- [x] Implementar `EstoqueLoja`.
+- [x] Implementar `AvaliacaoLoja`.
+- [x] Implementar `EstatisticaOferta`.
+- [x] Mapear relacionamentos e cardinalidades.
+- [x] Definir constraints de integridade.
+- [x] Definir tratamento para exclusão/ativação de registros.
+- [x] Mapear especificações técnicas das peças em `JSONB`.
 
 ## 3. Autenticação e usuários
 
-- [ ] Criar endpoint de registro de usuário.
-- [ ] Criar endpoint de registro de lojista.
-- [ ] Criar endpoint de login.
-- [ ] Implementar autenticação baseada em token.
-- [ ] Implementar autorização por perfil.
-- [ ] Hash de senha com algoritmo seguro.
-- [ ] Criar endpoint para consultar o perfil autenticado.
-- [ ] Criar endpoint para atualização de perfil.
-- [ ] Validar e-mail e campos obrigatórios.
-- [ ] Impedir acesso de usuário comum às rotas administrativas do lojista.
+- [x] Criar endpoint de registro de usuário.
+- [x] Criar endpoint de registro de lojista.
+- [x] Criar endpoint de login.
+- [x] Implementar autenticação baseada em token.
+- [x] Implementar autorização por perfil.
+- [x] Hash de senha com algoritmo seguro.
+- [x] Criar endpoint para consultar o perfil autenticado.
+- [x] Criar endpoint para atualização de perfil.
+- [x] Validar e-mail e campos obrigatórios.
+- [x] Impedir acesso de usuário comum às rotas administrativas do lojista.
 
 ## 4. Garagem Virtual
 
-- [ ] Criar CRUD de motocicletas do usuário.
-- [ ] Criar endpoint para listar modelos disponíveis.
-- [ ] Permitir seleção de modelo e ano.
-- [ ] Armazenar a motocicleta associada ao usuário.
-- [ ] Permitir múltiplas motocicletas na garagem.
-- [ ] Permitir selecionar uma motocicleta como contexto da busca.
-- [ ] Validar modelo/ano antes da persistência.
-- [ ] Criar endpoint para remover uma motocicleta da garagem.
+- [x] Criar CRUD de motocicletas do usuário.
+- [x] Criar endpoint para listar modelos disponíveis.
+- [x] Permitir seleção de modelo e ano.
+- [x] Armazenar a motocicleta associada ao usuário.
+- [x] Permitir múltiplas motocicletas na garagem.
+- [x] Permitir selecionar uma motocicleta como contexto da busca.
+- [x] Validar modelo/ano antes da persistência.
+- [x] Criar endpoint para remover uma motocicleta da garagem.
 
 ## 5. Catálogo de peças
 
-- [ ] Criar CRUD de categorias.
-- [ ] Criar CRUD de peças.
-- [ ] Definir campos básicos da peça.
-- [ ] Implementar armazenamento das especificações técnicas.
-- [ ] Criar relacionamento peça × modelo de motocicleta.
-- [ ] Criar endpoints para adicionar/remover compatibilidades.
-- [ ] Validar duplicidade de compatibilidade.
-- [ ] Criar busca por nome.
-- [ ] Criar busca por categoria.
-- [ ] Criar busca por referência/EAN quando aplicável.
+- [x] Criar CRUD de categorias.
+- [x] Criar CRUD de peças.
+- [x] Definir campos básicos da peça.
+- [x] Implementar armazenamento das especificações técnicas.
+- [x] Criar relacionamento peça × modelo de motocicleta.
+- [x] Criar endpoints para adicionar/remover compatibilidades.
+- [x] Validar duplicidade de compatibilidade.
+- [x] Criar busca por nome.
+- [x] Criar busca por categoria.
+- [x] Criar busca por referência/EAN quando aplicável.
 
 ## 6. Estoque e ofertas
 
-- [ ] Criar CRUD de estoque por loja.
-- [ ] Associar peça a uma loja.
-- [ ] Permitir alteração de preço.
-- [ ] Permitir alteração da quantidade disponível.
-- [ ] Implementar status ativo/inativo da oferta.
-- [ ] Criar cadastro de promoção.
-- [ ] Definir início e fim da promoção.
-- [ ] Validar período de validade.
-- [ ] Impedir estoque negativo.
-- [ ] Criar endpoint para listar ofertas ativas.
-- [ ] Criar endpoint para consultar detalhes de uma oferta.
+- [x] Criar CRUD de estoque por loja.
+- [x] Associar peça a uma loja.
+- [x] Permitir alteração de preço.
+- [x] Permitir alteração da quantidade disponível.
+- [x] Implementar status ativo/inativo da oferta.
+- [x] Criar cadastro de promoção.
+- [x] Definir início e fim da promoção.
+- [x] Validar período de validade.
+- [x] Impedir estoque negativo.
+- [x] Criar endpoint para listar ofertas ativas.
+- [x] Criar endpoint para consultar detalhes de uma oferta.
 
 ## 7. Compatibilidade
 
-- [ ] Criar serviço de compatibilidade no back-end.
-- [ ] Receber a motocicleta selecionada como contexto da busca.
-- [ ] Consultar `compatibilidade_peca_moto`.
-- [ ] Retornar somente ofertas compatíveis quando o filtro estiver ativo.
-- [ ] Garantir que modelo e ano sejam considerados nas regras definidas.
-- [ ] Separar a regra de compatibilidade da regra de ordenação.
-- [ ] Criar testes unitários para casos compatíveis.
-- [ ] Criar testes para casos incompatíveis.
-- [ ] Criar testes para ausência de dados de compatibilidade.
+- [x] Criar serviço de compatibilidade no back-end.
+- [x] Receber a motocicleta selecionada como contexto da busca.
+- [x] Consultar `compatibilidade_peca_moto`.
+- [x] Retornar somente ofertas compatíveis quando o filtro estiver ativo.
+- [x] Garantir que modelo e ano sejam considerados nas regras definidas.
+- [x] Separar a regra de compatibilidade da regra de ordenação.
+- [x] Criar testes unitários para casos compatíveis.
+- [x] Criar testes para casos incompatíveis.
+- [x] Criar testes para ausência de dados de compatibilidade.
 
 ## 8. Busca e recomendação
 
-- [ ] Criar endpoint principal de busca de peças.
-- [ ] Implementar filtros por texto.
-- [ ] Implementar filtro por categoria.
-- [ ] Implementar filtro por motocicleta da Garagem Virtual.
-- [ ] Implementar filtro por disponibilidade.
-- [ ] Implementar filtro por distância.
-- [ ] Implementar ordenação por preço.
-- [ ] Implementar ordenação por distância.
-- [ ] Implementar consideração de promoções ativas.
-- [ ] Implementar ranking combinado de ofertas.
-- [ ] Definir uma função de pontuação para o ranking.
-- [ ] Documentar os pesos utilizados no ranking.
-- [ ] Criar testes unitários para o ranking.
-- [ ] Garantir que ofertas incompatíveis não sejam recomendadas.
+- [x] Criar endpoint principal de busca de peças.
+- [x] Implementar filtros por texto.
+- [x] Implementar filtro por categoria.
+- [x] Implementar filtro por motocicleta da Garagem Virtual.
+- [x] Implementar filtro por disponibilidade.
+- [x] Implementar filtro por distância.
+- [x] Implementar ordenação por preço.
+- [x] Implementar ordenação por distância.
+- [x] Implementar consideração de promoções ativas.
+- [x] Implementar ranking combinado de ofertas.
+- [x] Definir uma função de pontuação para o ranking.
+- [x] Documentar os pesos utilizados no ranking.
+- [x] Criar testes unitários para o ranking.
+- [x] Garantir que ofertas incompatíveis não sejam recomendadas.
 
 ## 9. Geolocalização
 
-- [ ] Adicionar campo espacial para localização da loja.
-- [ ] Implementar geocodificação do endereço durante o cadastro/atualização da loja.
-- [ ] Integrar Nominatim no back-end.
-- [ ] Tratar falha de geocodificação.
-- [ ] Implementar consulta PostGIS por raio.
-- [ ] Calcular distância entre usuário e loja.
-- [ ] Retornar distância na API.
-- [ ] Implementar ordenação espacial.
-- [ ] Evitar chamadas desnecessárias ao serviço de geocodificação.
-- [ ] Validar consentimento antes de utilizar a localização do usuário.
+- [x] Adicionar campo espacial para localização da loja.
+- [x] Implementar geocodificação do endereço durante o cadastro/atualização da loja.
+- [x] Integrar Nominatim no back-end.
+- [x] Tratar falha de geocodificação.
+- [x] Implementar consulta PostGIS por raio.
+- [x] Calcular distância entre usuário e loja.
+- [x] Retornar distância na API.
+- [x] Implementar ordenação espacial.
+- [x] Evitar chamadas desnecessárias ao serviço de geocodificação.
+- [x] Validar consentimento antes de utilizar a localização do usuário.
 
 ## 10. API REST
 
-- [ ] Padronizar respostas HTTP.
-- [ ] Padronizar erros da API.
-- [ ] Criar DTOs para entrada e saída.
-- [ ] Evitar expor diretamente entidades do banco.
-- [ ] Implementar validação dos DTOs.
-- [ ] Criar paginação para listas potencialmente grandes.
-- [ ] Adicionar documentação dos endpoints.
-- [ ] Configurar Swagger/OpenAPI.
-- [ ] Implementar logs de erros e operações relevantes.
+- [x] Padronizar respostas HTTP.
+- [x] Padronizar erros da API.
+- [x] Criar DTOs para entrada e saída.
+- [x] Evitar expor diretamente entidades do banco.
+- [x] Implementar validação dos DTOs.
+- [x] Criar paginação para listas potencialmente grandes.
+- [x] Adicionar documentação dos endpoints.
+- [x] Configurar Swagger/OpenAPI.
+- [x] Implementar logs de erros e operações relevantes.
 
 ## 11. Front-end — base
 
@@ -259,42 +259,42 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ## 15. Avaliações e métricas
 
-- [ ] Criar endpoint para avaliação da loja.
-- [ ] Validar nota dentro da faixa permitida.
-- [ ] Impedir avaliações inválidas/duplicadas conforme regra definida.
-- [ ] Calcular média de avaliação da loja.
+- [x] Criar endpoint para avaliação da loja.
+- [x] Validar nota dentro da faixa permitida.
+- [x] Impedir avaliações inválidas/duplicadas conforme regra definida.
+- [x] Calcular média de avaliação da loja.
 - [ ] Exibir avaliação no front-end.
-- [ ] Registrar visualizações das ofertas.
-- [ ] Atualizar `estatisticas_oferta`.
-- [ ] Disponibilizar métricas necessárias ao dashboard.
+- [x] Registrar visualizações das ofertas.
+- [x] Atualizar `estatisticas_oferta`.
+- [x] Disponibilizar métricas necessárias ao dashboard.
 
 ## 16. Segurança e LGPD
 
-- [ ] Não armazenar senhas em texto puro.
-- [ ] Não versionar secrets.
-- [ ] Validar dados de entrada da API.
-- [ ] Configurar políticas de autorização.
-- [ ] Restringir endpoints administrativos.
-- [ ] Solicitar consentimento para localização.
-- [ ] Evitar persistir localização do usuário sem necessidade.
-- [ ] Revisar exposição de dados pessoais nas respostas da API.
-- [ ] Configurar HTTPS no ambiente de produção.
-- [ ] Revisar CORS antes da publicação.
+- [x] Não armazenar senhas em texto puro.
+- [x] Não versionar secrets.
+- [x] Validar dados de entrada da API.
+- [x] Configurar políticas de autorização.
+- [x] Restringir endpoints administrativos.
+- [x] Solicitar consentimento para localização.
+- [x] Evitar persistir localização do usuário sem necessidade.
+- [x] Revisar exposição de dados pessoais nas respostas da API.
+- [x] Configurar HTTPS no ambiente de produção.
+- [x] Revisar CORS antes da publicação.
 
 ## 17. Testes
 
 ### Back-end
 
-- [ ] Testar autenticação.
-- [ ] Testar autorização por perfil.
-- [ ] Testar CRUD da Garagem Virtual.
-- [ ] Testar CRUD de peças.
-- [ ] Testar CRUD de estoque.
-- [ ] Testar regras de compatibilidade.
-- [ ] Testar consultas geoespaciais.
-- [ ] Testar ranking de ofertas.
-- [ ] Testar validações de entrada.
-- [ ] Testar tratamento de erros.
+- [x] Testar autenticação.
+- [x] Testar autorização por perfil.
+- [x] Testar CRUD da Garagem Virtual.
+- [x] Testar CRUD de peças.
+- [x] Testar CRUD de estoque.
+- [x] Testar regras de compatibilidade.
+- [x] Testar consultas geoespaciais.
+- [x] Testar ranking de ofertas.
+- [x] Testar validações de entrada.
+- [x] Testar tratamento de erros.
 
 ### Front-end
 
@@ -316,16 +316,16 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ## 18. Qualidade e manutenção
 
-- [ ] Padronizar nomenclatura do código.
-- [ ] Remover código duplicado.
-- [ ] Adicionar documentação às regras de negócio complexas.
-- [ ] Configurar análise estática/lint.
-- [ ] Revisar queries SQL.
-- [ ] Revisar índices do banco.
-- [ ] Revisar tratamento de exceções.
-- [ ] Revisar logs.
-- [ ] Criar README de setup atualizado.
-- [ ] Criar documentação da API.
+- [x] Padronizar nomenclatura do código.
+- [x] Remover código duplicado.
+- [x] Adicionar documentação às regras de negócio complexas.
+- [x] Configurar análise estática/lint.
+- [x] Revisar queries SQL.
+- [x] Revisar índices do banco.
+- [x] Revisar tratamento de exceções.
+- [x] Revisar logs.
+- [x] Criar README de setup atualizado.
+- [x] Criar documentação da API.
 - [ ] Revisar configuração de produção.
 
 ## 19. MVP — ordem sugerida de implementação
@@ -334,44 +334,44 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 - [x] Estrutura do back-end.
 - [x] Estrutura do front-end.
-- [ ] PostgreSQL + PostGIS.
-- [ ] Migrations.
+- [x] PostgreSQL + PostGIS.
+- [x] Migrations.
 - [x] Configuração de ambiente.
 - [ ] Comunicação front-end ↔ API.
 
 ### Fase 2 — Acesso
 
-- [ ] Usuário.
-- [ ] Lojista.
-- [ ] Autenticação.
-- [ ] Autorização.
+- [x] Usuário.
+- [x] Lojista.
+- [x] Autenticação.
+- [x] Autorização.
 
 ### Fase 3 — Dados essenciais
 
-- [ ] Modelos de motocicletas.
-- [ ] Garagem Virtual.
-- [ ] Peças.
-- [ ] Compatibilidades.
-- [ ] Lojas.
-- [ ] Estoque/ofertas.
+- [x] Modelos de motocicletas.
+- [x] Garagem Virtual.
+- [x] Peças.
+- [x] Compatibilidades.
+- [x] Lojas.
+- [x] Estoque/ofertas.
 
 ### Fase 4 — Busca
 
-- [ ] Busca textual.
-- [ ] Filtros.
-- [ ] Compatibilidade.
-- [ ] Ordenação por preço.
-- [ ] Ordenação por distância.
-- [ ] Promoções.
+- [x] Busca textual.
+- [x] Filtros.
+- [x] Compatibilidade.
+- [x] Ordenação por preço.
+- [x] Ordenação por distância.
+- [x] Promoções.
 
 ### Fase 5 — Geolocalização
 
-- [ ] Nominatim.
-- [ ] PostGIS.
-- [ ] Consulta por proximidade.
+- [x] Nominatim.
+- [x] PostGIS.
+- [x] Consulta por proximidade.
 - [ ] Leaflet.
 - [ ] Marcadores.
-- [ ] Distância.
+- [x] Distância.
 
 ### Fase 6 — Interfaces
 
