@@ -5,6 +5,7 @@ export interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, senha: string) => Promise<void>;
+  registerMotociclista: (nome: string, email: string, senha: string) => Promise<void>;
   logout: () => void;
 }
 

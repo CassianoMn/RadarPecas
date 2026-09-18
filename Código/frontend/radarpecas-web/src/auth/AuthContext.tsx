@@ -64,14 +64,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const registerMotociclista = useCallback(async (nome: string, email: string, senha: string) => {
+    const data = await api<LoginResponse>('/auth/register-motociclista', {
+      method: 'POST',
+      body: JSON.stringify({ nome, email, senha }),
+    });
+    if (!data?.token || !data?.userId) {
+      throw new ApiError('Resposta de cadastro inválida.', 500);
+    }
+    setToken(data.token);
+    setUser({
+      id: data.userId,
+      nome: data.nome,
+      email: data.email,
+      tipoUsuario: data.tipoUsuario,
+      lojaId: data.lojaId,
+      nomeLoja: data.nomeLoja,
+    });
+  }, []);
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, logout }),
-    [user, loading, login, logout],
+    () => ({ user, loading, login, registerMotociclista, logout }),
+    [user, loading, login, registerMotociclista, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

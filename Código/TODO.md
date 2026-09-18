@@ -202,32 +202,32 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 
 ## 11. Front-end — base
 
-- [ ] Criar estrutura de rotas.
-- [ ] Criar layout principal.
-- [ ] Criar sistema de autenticação no cliente.
-- [ ] Criar gerenciamento do usuário autenticado.
-- [ ] Criar camada de comunicação HTTP com a API.
-- [ ] Criar tratamento global de erros.
-- [ ] Criar componentes reutilizáveis de formulário.
-- [ ] Criar componentes reutilizáveis de cards.
-- [ ] Criar estados de loading, vazio e erro.
-- [ ] Garantir responsividade Mobile-First.
+- [x] Criar estrutura de rotas.
+- [x] Criar layout principal.
+- [x] Criar sistema de autenticação no cliente.
+- [x] Criar gerenciamento do usuário autenticado.
+- [x] Criar camada de comunicação HTTP com a API.
+- [x] Criar tratamento global de erros.
+- [x] Criar componentes reutilizáveis de formulário.
+- [x] Criar componentes reutilizáveis de cards.
+- [x] Criar estados de loading, vazio e erro.
+- [x] Garantir responsividade Mobile-First.
 
 ## 12. Front-end — usuário
 
-- [ ] Implementar tela de login.
-- [ ] Implementar tela de cadastro de motociclista.
-- [ ] Implementar tela da Garagem Virtual.
-- [ ] Implementar cadastro de motocicleta.
-- [ ] Implementar edição/remoção de motocicleta.
-- [ ] Implementar tela inicial de exploração.
-- [ ] Implementar busca de peças.
-- [ ] Implementar filtros.
-- [ ] Implementar cards de ofertas.
-- [ ] Implementar detalhes da peça.
-- [ ] Implementar indicação de compatibilidade.
-- [ ] Implementar tela de lojas.
-- [ ] Implementar avaliação da loja.
+- [x] Implementar tela de login.
+- [x] Implementar tela de cadastro de motociclista.
+- [x] Implementar tela da Garagem Virtual.
+- [x] Implementar cadastro de motocicleta.
+- [x] Implementar edição/remoção de motocicleta.
+- [x] Implementar tela inicial de exploração.
+- [x] Implementar busca de peças.
+- [x] Implementar filtros.
+- [x] Implementar cards de ofertas.
+- [x] Implementar detalhes da peça.
+- [x] Implementar indicação de compatibilidade.
+- [x] Implementar tela de lojas.
+- [x] Implementar avaliação da loja.
 
 ## 13. Front-end — mapa
 

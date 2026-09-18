@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../auth/useAuth';
 import { Button, ErrorState, Field, InputWithIcon } from '../components/ui';
@@ -26,11 +26,14 @@ function LockIcon() {
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -38,7 +41,7 @@ export function LoginPage() {
     setSending(true);
     try {
       await login(email, senha);
-      navigate('/');
+      navigate(from, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível entrar.');
     } finally {

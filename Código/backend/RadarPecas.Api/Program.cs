@@ -14,7 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Configuração da Conexão com o PostgreSQL
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
     ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Port=5432;Database=radarpecas_db;Username=radar_user;Password=radar_pass_2026";
+    ?? "Host=localhost;Port=5432;Database=radarPecas;Username=postgres;Password=123456";
 
 builder.Services.AddDbContext<RadarPecasDbContext>(options =>
 {
