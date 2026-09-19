@@ -17,13 +17,29 @@ export function BuscaPage() {
   const [distanciaPill, setDistanciaPill] = useState<'5km' | '15km' | '+15km'>('15km');
   const [ordenacao, setOrdenacao] = useState(searchParams.get('ordenacao') || 'menor_distancia');
   const [page, setPage] = useState(1);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [categorias, setCategorias] = useState<string[]>([]);
   const [resultado, setResultado] = useState<BuscaResultado | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const marcasDisponiveis = ['DID', 'KMC', 'Riffel', 'Vaz', 'Vaz / Scud', 'Coroa & Pinhão'];
+  const marcasDisponiveis = ['Vaz', 'Cobreq', 'Fram', 'Pirelli', 'Heliar', 'Mobil', 'Philips', 'DID', 'KMC'];
+
+  // Obter localização do usuário para cálculo de distância
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          // Permissão não concedida ou indisponível
+        },
+        { timeout: 5000 }
+      );
+    }
+  }, []);
 
   // Carregar categorias
   useEffect(() => {
@@ -48,8 +64,23 @@ export function BuscaPage() {
       params.set('modeloMotoId', activeMoto.modeloMotoId.toString());
       params.set('anoFabricacao', activeMoto.anoFabricacao.toString());
     }
+
+    // Coordenadas para cálculo de distância e raio
+    if (userCoords) {
+      params.set('userLatitude', userCoords.lat.toString());
+      params.set('userLongitude', userCoords.lng.toString());
+    }
     const raio = distanciaPill === '5km' ? '5' : distanciaPill === '15km' ? '15' : '50';
     params.set('raioKm', raio);
+
+    // Filtros de marca e preço
+    if (selectedMarcas.length > 0) {
+      params.set('marca', selectedMarcas.join(','));
+    }
+    if (precoMaximo < 1500) {
+      params.set('precoMaximo', precoMaximo.toString());
+    }
+
     params.set('ordenacao', ordenacao);
     params.set('page', page.toString());
     params.set('pageSize', '12');
@@ -63,13 +94,14 @@ export function BuscaPage() {
     } finally {
       setLoading(false);
     }
-  }, [termo, categoria, activeMoto, distanciaPill, ordenacao, page]);
+  }, [termo, categoria, activeMoto, distanciaPill, ordenacao, page, selectedMarcas, precoMaximo, userCoords]);
 
   useEffect(() => {
     executarBusca();
   }, [executarBusca]);
 
   function handleToggleMarca(marca: string) {
+    setPage(1);
     if (selectedMarcas.includes(marca)) {
       setSelectedMarcas(selectedMarcas.filter((m) => m !== marca));
     } else {
@@ -80,8 +112,9 @@ export function BuscaPage() {
   function handleLimparFiltros() {
     setCategoria('');
     setSelectedMarcas([]);
-    setPrecoMaximo(450);
+    setPrecoMaximo(1500);
     setDistanciaPill('15km');
+    setPage(1);
   }
 
   function formatMoney(valor: number): string {
@@ -102,7 +135,10 @@ export function BuscaPage() {
           <select
             className="input"
             value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
+            onChange={(e) => {
+              setCategoria(e.target.value);
+              setPage(1);
+            }}
           >
             <option value="">Todas as categorias</option>
             {categorias.map((c) => (
@@ -157,7 +193,10 @@ export function BuscaPage() {
             max="1500"
             step="10"
             value={precoMaximo}
-            onChange={(e) => setPrecoMaximo(Number(e.target.value))}
+            onChange={(e) => {
+              setPrecoMaximo(Number(e.target.value));
+              setPage(1);
+            }}
             style={{ width: '100%', accentColor: '#006375' }}
           />
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b' }}>
@@ -176,7 +215,10 @@ export function BuscaPage() {
               <button
                 key={dist}
                 type="button"
-                onClick={() => setDistanciaPill(dist)}
+                onClick={() => {
+                  setDistanciaPill(dist);
+                  setPage(1);
+                }}
                 style={{
                   flex: 1,
                   padding: '7px 0',

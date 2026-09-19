@@ -8,6 +8,8 @@ public class BuscaFiltrosRequest
     public int? AnoFabricacao { get; set; }
     public Guid? GaragemVirtualId { get; set; }
     public bool ApenasEmEstoque { get; set; } = true;
+    public decimal? PrecoMaximo { get; set; }
+    public string? Marca { get; set; }
     public decimal? UserLatitude { get; set; }
     public decimal? UserLongitude { get; set; }
     public decimal? RaioKm { get; set; }

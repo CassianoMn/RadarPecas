@@ -124,6 +124,36 @@ public class BuscaRecomendacaoService : IBuscaRecomendacaoService
             var loja = e.Loja!;
             var peca = e.Peca!;
 
+            // Filtro de preço máximo efetivo
+            if (filtros.PrecoMaximo.HasValue && e.PrecoEfetivo > filtros.PrecoMaximo.Value)
+            {
+                continue;
+            }
+
+            // Filtro de marca/fabricante
+            if (!string.IsNullOrWhiteSpace(filtros.Marca))
+            {
+                var marcas = filtros.Marca.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (marcas.Length > 0)
+                {
+                    var nome = peca.Nome ?? string.Empty;
+                    var desc = peca.Descricao ?? string.Empty;
+                    var specs = peca.Especificacoes ?? string.Empty;
+                    var sku = peca.Sku ?? string.Empty;
+
+                    bool matchMarca = marcas.Any(m =>
+                        nome.Contains(m, StringComparison.OrdinalIgnoreCase) ||
+                        desc.Contains(m, StringComparison.OrdinalIgnoreCase) ||
+                        specs.Contains(m, StringComparison.OrdinalIgnoreCase) ||
+                        sku.Contains(m, StringComparison.OrdinalIgnoreCase));
+
+                    if (!matchMarca)
+                    {
+                        continue;
+                    }
+                }
+            }
+
             decimal? distancia = null;
             if (filtros.UserLatitude.HasValue && filtros.UserLongitude.HasValue)
             {
