@@ -11,6 +11,7 @@ export function Layout() {
 
   const [topSearch, setTopSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showLojistaNotice, setShowLojistaNotice] = useState(true);
 
   const isHome = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/cadastro';
@@ -181,6 +182,22 @@ export function Layout() {
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {isHome ? <Outlet /> : <div className="content-wrap"><Outlet /></div>}
       </main>
+
+      {/* Aviso discreto: ainda não há telas de lojista (TODO 14) */}
+      {user?.tipoUsuario === 'LOJISTA' && showLojistaNotice && (
+        <div className="lojista-notice" role="status">
+          <span className="lojista-notice-dot" aria-hidden="true" />
+          <span>Visitando telas para Motociclista. Lojista em breve.</span>
+          <button
+            type="button"
+            className="lojista-notice-close"
+            onClick={() => setShowLojistaNotice(false)}
+            aria-label="Dispensar aviso"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }
