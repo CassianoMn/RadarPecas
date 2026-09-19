@@ -9,8 +9,10 @@ import { LoginPage } from './pages/LoginPage';
 import { CadastroPage } from './pages/CadastroPage';
 import { BuscaPage } from './pages/BuscaPage';
 import { GaragemPage } from './pages/GaragemPage';
+import { AdicionarMotoPage } from './pages/AdicionarMotoPage';
 import { LojasPage } from './pages/LojasPage';
 import { LojaDetalhesPage } from './pages/LojaDetalhesPage';
+import { AvaliarLojaPage } from './pages/AvaliarLojaPage';
 import { OfertaDetalhesPage } from './pages/OfertaDetalhesPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -34,8 +36,24 @@ export default function App() {
                     </RequireAuth>
                   }
                 />
+                <Route
+                  path="garagem/adicionar"
+                  element={
+                    <RequireAuth>
+                      <AdicionarMotoPage />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="lojas" element={<LojasPage />} />
                 <Route path="lojas/:id" element={<LojaDetalhesPage />} />
+                <Route
+                  path="lojas/:id/avaliar"
+                  element={
+                    <RequireAuth>
+                      <AvaliarLojaPage />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="ofertas/:id" element={<OfertaDetalhesPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

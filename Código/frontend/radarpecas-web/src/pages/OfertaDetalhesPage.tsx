@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { api, ApiError } from '../lib/api';
+import { useParams } from 'react-router-dom';
+import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
-import { Button, Card, Chip, EmptyState, ErrorState, Loading } from '../components/ui';
+import { Button, Card, CheckIcon, ErrorState, Loading, StarIcon } from '../components/ui';
 
 export function OfertaDetalhesPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,379 +12,293 @@ export function OfertaDetalhesPage() {
   const [oferta, setOferta] = useState<OfertaDetalhe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [clickedContact, setClickedContact] = useState(false);
+  const [activeThumbIndex, setActiveThumbIndex] = useState(0);
+  const [reservado, setReservado] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    setError('');
 
-    // Tentar obter coordenadas do navegador se disponíveis para calcular distância precisa
-    const query = new URLSearchParams();
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          query.set('userLat', pos.coords.latitude.toString());
-          query.set('userLon', pos.coords.longitude.toString());
-          carregarOferta(query.toString());
-        },
-        () => carregarOferta(query.toString()),
-        { timeout: 4000 }
-      );
-    } else {
-      carregarOferta(query.toString());
-    }
-
-    async function carregarOferta(queryString: string) {
-      try {
-        const url = `/ofertas/${id}${queryString ? `?${queryString}` : ''}`;
-        const data = await api<OfertaDetalhe>(url);
-        setOferta(data);
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : 'Erro ao carregar detalhes da oferta.');
-      } finally {
-        setLoading(false);
-      }
-    }
+    api<OfertaDetalhe>(`/ofertas/${id}`)
+      .then((data) => setOferta(data))
+      .catch(() => {
+        setError('Oferta não encontrada.');
+        setOferta(null);
+      })
+      .finally(() => setLoading(false));
   }, [id]);
-
-  async function handleContactClick() {
-    if (!id || !oferta) return;
-    setClickedContact(true);
-
-    // Registra clique no backend de estatísticas
-    try {
-      await api(`/ofertas/${id}/clique`, { method: 'POST' });
-    } catch {
-      // Ignora erro de telemetria
-    }
-
-    // Redireciona para contato (WhatsApp se disponível)
-    if (oferta.loja.telefoneContato) {
-      const cleanPhone = oferta.loja.telefoneContato.replace(/\D/g, '');
-      const msg = encodeURIComponent(
-        `Olá! Vi a oferta da peça "${oferta.peca.nome}" no RadarPeças e gostaria de mais informações.`
-      );
-      window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, '_blank');
-    }
-  }
 
   function formatMoney(valor: number): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
-  // Verifica se a moto ativa é compatível
-  const isMotoCompativel = activeMoto && oferta?.compatibilidades?.some(
-    (c) =>
-      c.id === activeMoto.modeloMotoId ||
-      (c.marca.toLowerCase() === activeMoto.marca.toLowerCase() &&
-        c.modelo.toLowerCase() === activeMoto.modelo.toLowerCase())
-  );
-
-  // Faz o parse do campo JSONB de especificações se existir
-  let specsParsed: Record<string, string | number | boolean> | null = null;
-  if (oferta?.peca.especificacoes) {
-    try {
-      specsParsed = JSON.parse(oferta.peca.especificacoes);
-    } catch {
-      // se for string comum
+  function handleReservar() {
+    setReservado(true);
+    if (oferta?.loja.telefoneContato) {
+      const cleanPhone = oferta.loja.telefoneContato.replace(/\D/g, '');
+      const msg = encodeURIComponent(
+        `Olá! Gostaria de reservar o "${oferta.peca.nome}" (Cód: ${oferta.peca.sku || 'N/A'}) que vi no RadarPeças.`
+      );
+      window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, '_blank');
     }
   }
 
-  if (loading) {
-    return (
-      <section>
-        <Loading text="Carregando detalhes da oferta..." />
-      </section>
-    );
+  function handleIrAteALoja() {
+    if (!oferta) return;
+    const endereco = encodeURIComponent(oferta.loja.enderecoCompleto);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank');
   }
 
-  if (error || !oferta) {
-    return (
-      <section>
-        <ErrorState text={error || 'Oferta não encontrada.'} />
-        <Link to="/busca" className="btn btn-outline" style={{ marginTop: 16 }}>
-          ← Voltar para a busca
-        </Link>
-      </section>
-    );
-  }
+  if (loading) return <Loading text="Carregando detalhes do produto..." />;
+  if (error || !oferta) return <ErrorState text={error || 'Oferta não encontrada.'} />;
+
+  // Fotos disponíveis
+  const galleryPhotos = [
+    oferta.peca.fotoPecaUrl,
+    ...(oferta.loja.galeriaFotosUrls || []),
+  ].filter(Boolean) as string[];
+
+  const precoParcelado = oferta.precoEfetivo / 10;
+
+  // Verificação real de compatibilidade com a moto ativa do motociclista
+  const isCompativel = Boolean(
+    activeMoto &&
+    oferta.compatibilidades?.some(
+      (c) =>
+        c.marca.toLowerCase() === activeMoto.marca.toLowerCase() &&
+        c.modelo.toLowerCase() === activeMoto.modelo.toLowerCase() &&
+        (c.anoInicio == null || activeMoto.anoFabricacao >= c.anoInicio) &&
+        (c.anoFim == null || activeMoto.anoFabricacao <= c.anoFim)
+    )
+  );
 
   return (
     <section>
-      {/* Breadcrumb */}
-      <nav className="breadcrumb" aria-label="Navegação estrutural">
-        <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none' }}>
-          Explorar
-        </Link>{' '}
-        / <Link to="/busca" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Busca</Link>{' '}
-        / <span style={{ color: 'var(--text)' }}>{oferta.peca.nome}</span>
-      </nav>
-
-      {/* Banner de Compatibilidade com a moto ativa */}
-      {activeMoto && (
-        <div
-          style={{
-            borderRadius: 'var(--radius)',
-            padding: '14px 18px',
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: isMotoCompativel ? '#e6f7ed' : '#fff4e5',
-            border: `1px solid ${isMotoCompativel ? '#34d399' : '#f59e0b'}`,
-            color: isMotoCompativel ? '#065f46' : '#92400e',
-          }}
-        >
-          <span style={{ fontSize: '1.5rem' }}>{isMotoCompativel ? '✓' : '⚠️'}</span>
-          <div>
-            <strong>
-              {isMotoCompativel
-                ? `Compatível com sua moto cadastrada: ${activeMoto.marca} ${activeMoto.modelo} (${activeMoto.anoFabricacao})`
-                : `Atenção: Não confirmamos compatibilidade direta com ${activeMoto.marca} ${activeMoto.modelo} (${activeMoto.anoFabricacao})`}
-            </strong>
-            <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: 'inherit', opacity: 0.9 }}>
-              {isMotoCompativel
-                ? 'Essa peça foi verificada para o modelo e ano da sua motocicleta.'
-                : 'Verifique a lista de motos compatíveis abaixo ou tire dúvidas diretamente com o lojista.'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Topo do Produto: Foto + Informações e Preço */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: 24,
-          alignItems: 'start',
-          marginBottom: 32,
-        }}
-      >
-        {/* Foto do Produto */}
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)',
-            padding: 24,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: 280,
-          }}
-        >
-          {oferta.peca.fotoPecaUrl ? (
-            <img
-              src={oferta.peca.fotoPecaUrl}
-              alt={oferta.peca.nome}
-              style={{
-                maxWidth: '100%',
-                maxHeight: 320,
-                objectFit: 'contain',
-                borderRadius: 'var(--radius)',
-              }}
-            />
-          ) : (
-            <div style={{ textAlign: 'center', color: 'var(--muted)' }}>
-              <span style={{ fontSize: '4rem', display: 'block', marginBottom: 8 }}>⚙️</span>
-              <span>Imagem não cadastrada pelo lojista</span>
-            </div>
-          )}
-        </div>
-
-        {/* Informações Principais & Compra/Contato */}
-        <div className="card" style={{ padding: 24 }}>
-          <div className="chips-row" style={{ marginBottom: 10 }}>
-            <Chip>{oferta.peca.categoria}</Chip>
-            {oferta.promocaoAtiva && <Chip variant="promo">🔥 Oferta em Promoção</Chip>}
-            <Chip variant="muted">
-              {oferta.quantidadeEstoque > 0
-                ? `${oferta.quantidadeEstoque} em estoque`
-                : 'Sob encomenda / Sem estoque'}
-            </Chip>
-          </div>
-
-          <h1 style={{ fontSize: '1.6rem', marginBottom: 12 }}>{oferta.peca.nome}</h1>
-
-          {/* Códigos */}
-          <div style={{ display: 'flex', gap: 16, fontSize: '0.85rem', color: 'var(--muted)', marginBottom: 16 }}>
-            {oferta.peca.sku && <span>SKU: <strong>{oferta.peca.sku}</strong></span>}
-            {oferta.peca.codigoEan && <span>EAN: <strong>{oferta.peca.codigoEan}</strong></span>}
-          </div>
-
-          {/* Preços */}
-          <div style={{ margin: '16px 0', padding: '14px 16px', background: 'var(--bg)', borderRadius: 'var(--radius)' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary)' }}>
-                {formatMoney(oferta.precoEfetivo)}
-              </span>
-              {oferta.promocaoAtiva && oferta.precoPromocional && (
-                <span style={{ textDecoration: 'line-through', color: 'var(--muted)', fontSize: '1.1rem' }}>
-                  {formatMoney(oferta.precoVenda)}
+      {/* Layout em Duas Colunas */}
+      <div className="details-layout">
+        {/* COLUNA ESQUERDA: FOTO GRANDE + MINIATURAS + ESPECIFICAÇÕES */}
+        <div>
+          {/* Caixa Principal da Foto */}
+          <div className="product-main-photo-wrap">
+            {/* Badge de compatibilidade apenas se a moto ativa for realmente compatível */}
+            {isCompativel && activeMoto && (
+              <div className="badge-photo-topleft">
+                <span className="badge-compativel" style={{ padding: '6px 14px', fontSize: '0.78rem' }}>
+                  <CheckIcon size={14} /> Compatível com {activeMoto.marca} {activeMoto.modelo} ({activeMoto.anoFabricacao})
                 </span>
-              )}
-            </div>
-            {oferta.promocaoAtiva && oferta.dataFimPromocao && (
-              <small style={{ color: 'var(--danger)', display: 'block', marginTop: 4 }}>
-                Promoção válida até {new Date(oferta.dataFimPromocao).toLocaleDateString('pt-BR')}
-              </small>
+              </div>
+            )}
+
+            {galleryPhotos.length > 0 ? (
+              <img
+                src={galleryPhotos[activeThumbIndex] || galleryPhotos[0]}
+                alt={oferta.peca.nome}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>
+                ⚙️
+              </div>
             )}
           </div>
 
-          {/* Ações de Contato / Conversão */}
-          <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
-            <Button
-              type="button"
-              block
-              onClick={handleContactClick}
-              disabled={oferta.quantidadeEstoque <= 0}
-            >
-              💬 Falar com a Loja / Negociar Peça
-            </Button>
-            {clickedContact && (
-              <p style={{ fontSize: '0.82rem', color: 'var(--primary)', textAlign: 'center', margin: 0 }}>
-                ✓ Clique registrado! Abrindo contato com a loja...
-              </p>
-            )}
-            <Link
-              to={`/lojas/${oferta.loja.id}`}
-              className="btn btn-outline"
-              style={{ textAlign: 'center' }}
-            >
-              Ver perfil completo e outros itens da loja
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Seção de Abas/Grid de Detalhes: Descrição, Especificações, Compatibilidade e Loja */}
-      <div className="grid" style={{ marginTop: 20 }}>
-        {/* Card de Especificações e Descrição */}
-        <Card title="Especificações Técnicas">
-          {oferta.peca.descricao && (
-            <p style={{ color: 'var(--text)', whiteSpace: 'pre-line', marginBottom: 16 }}>
-              {oferta.peca.descricao}
-            </p>
-          )}
-
-          {specsParsed && typeof specsParsed === 'object' ? (
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                fontSize: '0.9rem',
-                marginTop: 8,
-              }}
-            >
-              <tbody>
-                {Object.entries(specsParsed).map(([chave, valor]) => (
-                  <tr key={chave} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td
-                      style={{
-                        padding: '8px 4px',
-                        fontFamily: 'var(--mono)',
-                        fontSize: '0.8rem',
-                        color: 'var(--muted)',
-                        textTransform: 'uppercase',
-                        width: '40%',
-                      }}
-                    >
-                      {chave}
-                    </td>
-                    <td style={{ padding: '8px 4px', fontWeight: 600 }}>{String(valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : oferta.peca.especificacoes ? (
-            <p style={{ color: 'var(--text)' }}>{oferta.peca.especificacoes}</p>
-          ) : (
-            <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-              Nenhuma especificação técnica adicional cadastrada.
-            </p>
-          )}
-        </Card>
-
-        {/* Card de Compatibilidade de Motocicletas */}
-        <Card title="Motos Compatíveis">
-          <p style={{ fontSize: '0.85rem' }}>
-            Esta peça é compatível com os seguintes modelos cadastrados no catálogo:
-          </p>
-
-          {oferta.compatibilidades.length === 0 ? (
-            <EmptyState text="Compatibilidade universal ou ainda não mapeada para esta peça." />
-          ) : (
-            <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-              {oferta.compatibilidades.map((c) => (
-                <div
-                  key={c.id}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    background: 'var(--bg)',
-                    borderRadius: 'var(--radius)',
-                    fontSize: '0.9rem',
-                  }}
+          {/* Miniaturas da Galeria (apenas se houver mais de 1 imagem) */}
+          {galleryPhotos.length > 1 && (
+            <div className="gallery-thumbs-row">
+              {galleryPhotos.map((url, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`gallery-thumb ${activeThumbIndex === idx ? 'active' : ''}`}
+                  onClick={() => setActiveThumbIndex(idx)}
                 >
-                  <div>
-                    <strong>{c.marca} {c.modelo}</strong>
-                  </div>
-                  <Chip variant="muted">
-                    {c.anoInicio ? `${c.anoInicio} - ${c.anoFim ?? 'presente'}` : 'Todos os anos'}
-                  </Chip>
-                </div>
+                  <img src={url} alt={`Foto miniatura ${idx + 1}`} />
+                </button>
               ))}
             </div>
           )}
-        </Card>
-      </div>
 
-      {/* Card da Loja Vendedora */}
-      <div style={{ marginTop: 24 }}>
-        <Card title="Sobre a Loja Vendedora">
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 16,
-            }}
-          >
-            <div>
-              <h2 style={{ fontSize: '1.25rem', marginBottom: 4 }}>
-                <Link
-                  to={`/lojas/${oferta.loja.id}`}
-                  style={{ color: 'inherit', textDecoration: 'none' }}
-                >
-                  {oferta.loja.nomeFantasia}
-                </Link>
-              </h2>
-              <p style={{ margin: 0, fontSize: '0.9rem' }}>{oferta.loja.enderecoCompleto}</p>
-              <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'center' }}>
-                <span className="rating">
-                  ★ {oferta.loja.mediaAvaliacao.toFixed(1)} ({oferta.loja.totalAvaliacoes} avaliações)
+          {/* Card de Especificações Técnicas */}
+          {oferta.peca.especificacoes && (
+            <div style={{ marginTop: 24 }}>
+              <Card title="Especificações Técnicas">
+                <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.6, color: '#334155' }}>
+                  {oferta.peca.especificacoes}
+                </p>
+              </Card>
+            </div>
+          )}
+        </div>
+
+        {/* COLUNA DIREITA: PREÇO, RESERVA & INFORMAÇÕES DA LOJA */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Card de Dados do Produto e Compra */}
+          <Card>
+            {oferta.peca.sku && (
+              <span style={{ fontFamily: 'var(--mono)', fontSize: '0.8rem', color: '#64748b' }}>
+                Cód: {oferta.peca.sku}
+              </span>
+            )}
+
+            <h1 style={{ fontSize: '1.5rem', margin: '6px 0 10px', lineHeight: 1.3 }}>
+              {oferta.peca.nome}
+            </h1>
+
+            {/* Avaliação em estrelas se houver */}
+            {oferta.loja.totalAvaliacoes > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                <div style={{ display: 'flex', color: '#f59e0b' }}>
+                  <StarIcon size={16} />
+                </div>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  {oferta.loja.mediaAvaliacao.toFixed(1)} ({oferta.loja.totalAvaliacoes} {oferta.loja.totalAvaliacoes === 1 ? 'avaliação' : 'avaliações'})
                 </span>
-                {oferta.loja.telefoneContato && (
-                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-                    📞 {oferta.loja.telefoneContato}
-                  </span>
-                )}
-                {oferta.distanciaKm != null && (
-                  <Chip variant="muted">A {oferta.distanciaKm.toFixed(1)} km de você</Chip>
-                )}
+              </div>
+            )}
+
+            {/* Preço e Parcelamento */}
+            <div style={{ margin: '14px 0 20px' }}>
+              <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#006375' }}>
+                {formatMoney(oferta.precoEfetivo)}
+              </div>
+              <p style={{ margin: '2px 0 0', fontSize: '0.88rem', color: '#64748b' }}>
+                em até 10x de {formatMoney(precoParcelado)} sem juros
+              </p>
+            </div>
+
+            {/* Botão Reservar na Loja Física */}
+            <Button
+              type="button"
+              variant="outline"
+              block
+              onClick={handleReservar}
+              style={{ padding: '12px', fontSize: '0.88rem' }}
+            >
+              Reservar na Loja Física
+            </Button>
+
+            {reservado && (
+              <p style={{ color: '#006375', fontSize: '0.82rem', textAlign: 'center', marginTop: 8 }}>
+                ✓ Abrindo contato direto com o lojista via WhatsApp...
+              </p>
+            )}
+          </Card>
+
+          {/* Card de Informações da Loja */}
+          <Card title="Informações da Loja">
+            {/* Cabeçalho da Loja */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 'var(--radius-sm)',
+                  background: '#ddf0f5',
+                  color: '#006375',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '1rem',
+                  fontFamily: 'var(--mono)',
+                }}
+              >
+                {oferta.loja.nomeFantasia.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <strong style={{ fontSize: '1rem', display: 'block' }}>{oferta.loja.nomeFantasia}</strong>
+                <span
+                  style={{
+                    fontSize: '0.78rem',
+                    color: '#64748b',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  ✓ Vendedor Verificado
+                </span>
               </div>
             </div>
 
-            <Link to={`/lojas/${oferta.loja.id}`} className="btn btn-outline">
-              Acessar Perfil da Loja
-            </Link>
-          </div>
-        </Card>
+            {/* Mini Mapa Preview estilizado */}
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                height: 120,
+                borderRadius: 'var(--radius)',
+                overflow: 'hidden',
+                background: '#e2e8f0',
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {/* Imagem de fundo do mapa */}
+              <img
+                src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80"
+                alt="Mapa da Loja"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+              />
+
+              {/* Pin central */}
+              <div
+                style={{
+                  position: 'absolute',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+              >
+                <span style={{ fontSize: '1.8rem', color: '#dc2626' }}>📍</span>
+                <span
+                  style={{
+                    background: '#ffffff',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    boxShadow: 'var(--shadow-sm)',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  {oferta.distanciaKm != null ? `A ${oferta.distanciaKm.toFixed(1)} km de você` : 'Localização da loja'}
+                </span>
+              </div>
+            </div>
+
+            {/* Endereço */}
+            <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 16px', display: 'flex', gap: 6 }}>
+              <span>🕮</span> {oferta.loja.enderecoCompleto}
+            </p>
+
+            {/* Botão Ir até a Loja */}
+            <button
+              type="button"
+              onClick={handleIrAteALoja}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border-strong)',
+                background: '#f8fafc',
+                color: '#334155',
+                fontFamily: 'var(--mono)',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span>⮹</span> Ir até a Loja
+            </button>
+          </Card>
+        </div>
       </div>
     </section>
   );

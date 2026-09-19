@@ -1,38 +1,31 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
-import type { GaragemItem, ModeloMoto } from '../types';
-import { Button, Card, EmptyState, ErrorState, Field, Loading, TextInput } from '../components/ui';
+import type { GaragemItem, OfertaBuscaItem } from '../types';
+import { Button, EmptyState, ErrorState, Loading, TrashIcon, EditIcon } from '../components/ui';
 
 export function GaragemPage() {
-  const navigate = useNavigate();
   const { activeMoto, setActiveMoto } = useActiveMoto();
 
   const [motos, setMotos] = useState<GaragemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Estados para Adicionar Moto
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [marcas, setMarcas] = useState<string[]>([]);
-  const [selectedMarca, setSelectedMarca] = useState('');
-  const [modelos, setModelos] = useState<ModeloMoto[]>([]);
-  const [selectedModeloId, setSelectedModeloId] = useState<number | ''>('');
-  const [anoFabricacao, setAnoFabricacao] = useState<number | ''>('');
-  const [apelido, setApelido] = useState('');
-  const [fotoUrl, setFotoUrl] = useState('');
-  const [formError, setFormError] = useState('');
-  const [saving, setSaving] = useState(false);
+  // Peças recomendadas
+  const [recommendedCategory, setRecommendedCategory] = useState('Todas');
+  const [recommendedParts, setRecommendedParts] = useState<OfertaBuscaItem[]>([]);
+  const [loadingParts, setLoadingParts] = useState(false);
+  const [totalCountParts, setTotalCountParts] = useState(0);
 
-  // Estados para Edição
+  // Estados para edição rápida (modal / inline)
   const [editingMoto, setEditingMoto] = useState<GaragemItem | null>(null);
   const [editAno, setEditAno] = useState<number | ''>('');
   const [editApelido, setEditApelido] = useState('');
   const [editFotoUrl, setEditFotoUrl] = useState('');
-  const [editError, setEditError] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  const categories = ['Todas', 'Filtros', 'Pastilhas de Freio', 'Óleo', 'Relação'];
 
   const carregarGaragem = useCallback(async () => {
     setLoading(true);
@@ -40,21 +33,22 @@ export function GaragemPage() {
     try {
       const data = await api<GaragemItem[]>('/garagem');
       setMotos(data ?? []);
-      // Se não há moto ativa e tem motos na garagem, define a primeira como ativa por padrão
-      if (!activeMoto && data && data.length > 0) {
-        const first = data[0];
-        setActiveMoto({
-          id: first.id,
-          modeloMotoId: first.modeloMotoId,
-          marca: first.marca,
-          modelo: first.modelo,
-          anoFabricacao: first.anoFabricacao,
-          apelido: first.apelido,
-          fotoMotoUrl: first.fotoMotoUrl,
-        });
+      if (data && data.length > 0) {
+        if (!activeMoto) {
+          const first = data[0];
+          setActiveMoto({
+            id: first.id,
+            modeloMotoId: first.modeloMotoId,
+            marca: first.marca,
+            modelo: first.modelo,
+            anoFabricacao: first.anoFabricacao,
+            apelido: first.apelido,
+            fotoMotoUrl: first.fotoMotoUrl,
+          });
+        }
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erro ao carregar garagem.');
+      setError(err instanceof ApiError ? err.message : 'Erro ao carregar motos da garagem.');
     } finally {
       setLoading(false);
     }
@@ -64,163 +58,36 @@ export function GaragemPage() {
     carregarGaragem();
   }, [carregarGaragem]);
 
-  // Carregar marcas quando abrir o formulário
+  // Carregar peças recomendadas para a moto ativa
   useEffect(() => {
-    if (showAddForm && marcas.length === 0) {
-      api<string[]>('/modelos-moto/marcas')
-        .then((res) => setMarcas(res ?? []))
-        .catch(() => setFormError('Erro ao carregar marcas de motocicletas.'));
-    }
-  }, [showAddForm, marcas.length]);
-
-  // Carregar modelos quando a marca mudar
-  useEffect(() => {
-    if (!selectedMarca) {
-      setModelos([]);
-      setSelectedModeloId('');
-      return;
-    }
-    api<ModeloMoto[]>(`/modelos-moto?marca=${encodeURIComponent(selectedMarca)}`)
-      .then((res) => {
-        setModelos(res ?? []);
-        setSelectedModeloId('');
-      })
-      .catch(() => setFormError('Erro ao carregar modelos da marca.'));
-  }, [selectedMarca]);
-
-  const selectedModeloObj = modelos.find((m) => m.id === selectedModeloId);
-
-  async function handleAddMoto(e: FormEvent) {
-    e.preventDefault();
-    setFormError('');
-
-    if (!selectedModeloId) {
-      setFormError('Selecione o modelo da motocicleta.');
+    if (!activeMoto) {
+      setRecommendedParts([]);
       return;
     }
 
-    const ano = Number(anoFabricacao);
-    if (!ano || isNaN(ano) || ano < 1950 || ano > new Date().getFullYear() + 1) {
-      setFormError('Informe um ano de fabricação válido.');
-      return;
-    }
+    const currentMoto = activeMoto;
 
-    if (selectedModeloObj) {
-      if (selectedModeloObj.anoInicio && ano < selectedModeloObj.anoInicio) {
-        setFormError(`O ano informado é menor que o ano de início do modelo (${selectedModeloObj.anoInicio}).`);
-        return;
-      }
-      if (selectedModeloObj.anoFim && ano > selectedModeloObj.anoFim) {
-        setFormError(`O ano informado é maior que o ano final do modelo (${selectedModeloObj.anoFim}).`);
-        return;
+    async function carregarRecomendadas() {
+      setLoadingParts(true);
+      try {
+        const catQuery = recommendedCategory !== 'Todas' ? `&categoria=${encodeURIComponent(recommendedCategory)}` : '';
+        const res = await api<{ ofertas: { items: OfertaBuscaItem[]; totalCount: number } }>(
+          `/busca?modeloMotoId=${currentMoto.modeloMotoId}&anoFabricacao=${currentMoto.anoFabricacao}${catQuery}&pageSize=4`
+        );
+        if (res && res.ofertas) {
+          setRecommendedParts(res.ofertas.items);
+          setTotalCountParts(res.ofertas.totalCount);
+        }
+      } catch {
+        setRecommendedParts([]);
+        setTotalCountParts(0);
+      } finally {
+        setLoadingParts(false);
       }
     }
 
-    setSaving(true);
-    try {
-      const novaMoto = await api<GaragemItem>('/garagem', {
-        method: 'POST',
-        body: JSON.stringify({
-          modeloMotoId: selectedModeloId,
-          anoFabricacao: ano,
-          apelido: apelido.trim() || null,
-          fotoMotoUrl: fotoUrl.trim() || null,
-        }),
-      });
-
-      // Define como moto ativa
-      setActiveMoto({
-        id: novaMoto.id,
-        modeloMotoId: novaMoto.modeloMotoId,
-        marca: novaMoto.marca,
-        modelo: novaMoto.modelo,
-        anoFabricacao: novaMoto.anoFabricacao,
-        apelido: novaMoto.apelido,
-        fotoMotoUrl: novaMoto.fotoMotoUrl,
-      });
-
-      // Reset form
-      setShowAddForm(false);
-      setSelectedMarca('');
-      setSelectedModeloId('');
-      setAnoFabricacao('');
-      setApelido('');
-      setFotoUrl('');
-
-      await carregarGaragem();
-    } catch (err) {
-      setFormError(err instanceof ApiError ? err.message : 'Erro ao cadastrar moto.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function startEditing(moto: GaragemItem) {
-    setEditingMoto(moto);
-    setEditAno(moto.anoFabricacao);
-    setEditApelido(moto.apelido || '');
-    setEditFotoUrl(moto.fotoMotoUrl || '');
-    setEditError('');
-  }
-
-  async function handleUpdateMoto(e: FormEvent) {
-    e.preventDefault();
-    if (!editingMoto) return;
-    setEditError('');
-
-    const ano = Number(editAno);
-    if (!ano || isNaN(ano) || ano < 1950 || ano > new Date().getFullYear() + 1) {
-      setEditError('Informe um ano de fabricação válido.');
-      return;
-    }
-
-    setSavingEdit(true);
-    try {
-      const atualizada = await api<GaragemItem>(`/garagem/${editingMoto.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          anoFabricacao: ano,
-          apelido: editApelido.trim() || null,
-          fotoMotoUrl: editFotoUrl.trim() || null,
-        }),
-      });
-
-      if (activeMoto?.id === editingMoto.id) {
-        setActiveMoto({
-          id: atualizada.id,
-          modeloMotoId: atualizada.modeloMotoId,
-          marca: atualizada.marca,
-          modelo: atualizada.modelo,
-          anoFabricacao: atualizada.anoFabricacao,
-          apelido: atualizada.apelido,
-          fotoMotoUrl: atualizada.fotoMotoUrl,
-        });
-      }
-
-      setEditingMoto(null);
-      await carregarGaragem();
-    } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
-    } finally {
-      setSavingEdit(false);
-    }
-  }
-
-  async function handleDeleteMoto(id: string) {
-    if (!window.confirm('Tem certeza que deseja remover esta moto da sua garagem?')) {
-      return;
-    }
-
-    try {
-      await api(`/garagem/${id}`, { method: 'DELETE' });
-      if (activeMoto?.id === id) {
-        setActiveMoto(null);
-      }
-      await carregarGaragem();
-    } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
-    }
-  }
+    carregarRecomendadas();
+  }, [activeMoto, recommendedCategory]);
 
   function handleSelectActive(moto: GaragemItem) {
     setActiveMoto({
@@ -234,270 +101,377 @@ export function GaragemPage() {
     });
   }
 
-  function handleBuscarPecas(moto: GaragemItem) {
-    handleSelectActive(moto);
-    navigate(`/busca?modeloMotoId=${moto.modeloMotoId}&anoFabricacao=${moto.anoFabricacao}`);
+  async function handleDeleteMoto(id: string) {
+    if (!window.confirm('Tem certeza que deseja remover esta moto da sua garagem?')) return;
+    try {
+      await api(`/garagem/${id}`, { method: 'DELETE' });
+      if (activeMoto?.id === id) {
+        setActiveMoto(null);
+      }
+      await carregarGaragem();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
+    }
+  }
+
+  function startEditing(moto: GaragemItem) {
+    setEditingMoto(moto);
+    setEditAno(moto.anoFabricacao);
+    setEditApelido(moto.apelido || '');
+    setEditFotoUrl(moto.fotoMotoUrl || '');
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingMoto) return;
+    setSavingEdit(true);
+    try {
+      await api(`/garagem/${editingMoto.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          anoFabricacao: Number(editAno),
+          apelido: editApelido.trim() || null,
+          fotoMotoUrl: editFotoUrl.trim() || null,
+        }),
+      });
+      setEditingMoto(null);
+      await carregarGaragem();
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  function formatMoney(valor: number): string {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
   return (
     <section>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+      {/* Topo da página */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
         <div>
-          <h1>Minha Garagem Virtual</h1>
-          <p>Cadastre suas motos para filtrar ofertas de peças compatíveis com 1 clique.</p>
+          <h1 style={{ fontSize: '1.9rem', marginBottom: 4 }}>Minha Garagem Virtual</h1>
+          <p style={{ margin: 0, fontSize: '0.95rem' }}>
+            Gerencie suas motocicletas para encontrar peças compatíveis mais rápido.
+          </p>
         </div>
-        <Button
-          type="button"
-          onClick={() => {
-            setShowAddForm((v) => !v);
-            setEditingMoto(null);
-          }}
-        >
-          {showAddForm ? '✕ Fechar Formulário' : '+ Adicionar Moto'}
-        </Button>
+        <Link to="/garagem/adicionar" className="btn btn-garage-top" style={{ textTransform: 'none', fontSize: '0.9rem', padding: '10px 20px' }}>
+          <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>+</span> Adicionar Nova Moto
+        </Link>
       </div>
 
-      {/* Formulário de Adicionar Moto */}
-      {showAddForm && (
-        <div className="card" style={{ margin: '20px 0', border: '2px solid var(--primary)' }}>
-          <h3>Cadastrar Nova Motocicleta</h3>
-          <p>Selecione a marca e modelo para compatibilidade precisa com nosso catálogo.</p>
+      {loading && <Loading text="Carregando sua garagem..." />}
+      {error && <ErrorState text={error} onRetry={carregarGaragem} />}
 
-          <form onSubmit={handleAddMoto} className="form" style={{ marginTop: 12 }}>
-            <div className="grid" style={{ marginTop: 0 }}>
-              <Field label="Marca">
-                <select
-                  className="input"
-                  value={selectedMarca}
-                  onChange={(e) => setSelectedMarca(e.target.value)}
-                  required
+      {!loading && !error && motos.length === 0 && (
+        <EmptyState text="Sua garagem está vazia! Cadastre sua primeira moto clicando no botão acima para desbloquear compatibilidade instantânea." />
+      )}
+
+      {/* Grid Master-Detail 2 Colunas */}
+      {!loading && !error && motos.length > 0 && (
+        <div className="garage-grid">
+          {/* COLUNA ESQUERDA: LISTA "MINHAS MOTOS" */}
+          <div>
+            <div style={{ borderBottom: '2px solid var(--border)', paddingBottom: 6, marginBottom: 16 }}>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Minhas Motos</h2>
+            </div>
+
+            {motos.map((moto) => {
+              const isActive = activeMoto?.id === moto.id;
+
+              return (
+                <div
+                  key={moto.id}
+                  className={`moto-card-item ${isActive ? 'active' : ''}`}
+                  onClick={() => handleSelectActive(moto)}
                 >
-                  <option value="">Selecione a Marca...</option>
-                  {marcas.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
+                  {/* Foto da Moto */}
+                  <div className="moto-card-img-wrap">
+                    {moto.fotoMotoUrl ? (
+                      <img src={moto.fotoMotoUrl} alt={moto.modelo} />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '3rem',
+                          background: '#f1f5f9',
+                        }}
+                      >
+                        🏍️
+                      </div>
+                    )}
+
+                    {/* Badge "Ativa" no topo direito */}
+                    {isActive && (
+                      <div className="badge-photo-topright">
+                        <span className="badge-active-moto">Ativa</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Informações da moto */}
+                  <div className="moto-card-content">
+                    <h3 style={{ fontSize: '1.05rem', margin: '0 0 4px' }}>
+                      {moto.marca} {moto.modelo}
+                    </h3>
+                    <p style={{ margin: '0 0 2px', fontSize: '0.85rem', color: '#475569' }}>
+                      Ano: {moto.anoFabricacao}
+                    </p>
+                    {moto.apelido && (
+                      <p style={{ margin: '0 0 10px', fontSize: '0.85rem', fontStyle: 'italic', color: '#64748b' }}>
+                        Apelido: "{moto.apelido}"
+                      </p>
+                    )}
+
+                    {/* Divisor e Ações Editar / Excluir */}
+                    <div
+                      style={{
+                        borderTop: '1px solid var(--border)',
+                        paddingTop: 10,
+                        marginTop: 10,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startEditing(moto);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#006375',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <EditIcon size={14} /> Editar
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMoto(moto.id);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#dc2626',
+                          cursor: 'pointer',
+                          padding: 4,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                        title="Remover motocicleta"
+                      >
+                        <TrashIcon size={15} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* COLUNA DIREITA: PEÇAS RECOMENDADAS */}
+          <div className="recommended-parts-panel">
+            {activeMoto ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.2rem' }}>🔧</span>
+                    <h2 style={{ fontSize: '1.15rem', margin: 0 }}>
+                      Peças Recomendadas para {activeMoto.marca} {activeMoto.modelo}
+                    </h2>
+                  </div>
+                  <span
+                    style={{
+                      background: '#ddf0f5',
+                      color: '#006375',
+                      fontFamily: 'var(--mono)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: 'var(--radius-pill)',
+                    }}
+                  >
+                    Compatibilidade Verificada
+                  </span>
+                </div>
+
+                {/* Filtros em Pílulas */}
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 20 }}>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setRecommendedCategory(cat)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: 'var(--radius-pill)',
+                        border: 'none',
+                        fontFamily: 'var(--mono)',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        background: recommendedCategory === cat ? '#006375' : '#f1f5f9',
+                        color: recommendedCategory === cat ? '#ffffff' : '#475569',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {cat}
+                    </button>
                   ))}
-                </select>
-              </Field>
+                </div>
 
-              <Field label="Modelo">
-                <select
-                  className="input"
-                  value={selectedModeloId}
-                  onChange={(e) => setSelectedModeloId(e.target.value ? Number(e.target.value) : '')}
-                  disabled={!selectedMarca || modelos.length === 0}
-                  required
-                >
-                  <option value="">
-                    {!selectedMarca ? 'Selecione uma marca antes' : 'Selecione o Modelo...'}
-                  </option>
-                  {modelos.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.nomeExibicao}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
+                {loadingParts && <Loading text="Buscando recomendações para sua moto..." />}
 
-            <div className="grid" style={{ marginTop: 0 }}>
-              <Field
-                label={
-                  selectedModeloObj && selectedModeloObj.anoInicio
-                    ? `Ano Fabricação (${selectedModeloObj.anoInicio} - ${selectedModeloObj.anoFim ?? 'atual'})`
-                    : 'Ano Fabricação'
-                }
-              >
-                <TextInput
-                  type="number"
-                  placeholder="Ex: 2022"
-                  value={anoFabricacao}
-                  onChange={(e) => setAnoFabricacao(e.target.value ? Number(e.target.value) : '')}
-                  min={selectedModeloObj?.anoInicio ?? 1950}
-                  max={selectedModeloObj?.anoFim ?? new Date().getFullYear() + 1}
-                  required
-                />
-              </Field>
+                {/* Grade 2x2 de Peças */}
+                {!loadingParts && (
+                  <div className="recommended-grid">
+                    {recommendedParts.map((item) => (
+                      <Link
+                        key={item.estoqueId}
+                        to={`/ofertas/${item.estoqueId}`}
+                        className="recommended-card"
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        {item.fotoPecaUrl ? (
+                          <img src={item.fotoPecaUrl} alt={item.nomePeca} />
+                        ) : (
+                          <div
+                            style={{
+                              width: 80,
+                              height: 80,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              background: '#f1f5f9',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: '1.8rem',
+                            }}
+                          >
+                            📦
+                          </div>
+                        )}
 
-              <Field label="Apelido da Moto (Opcional)">
-                <TextInput
-                  type="text"
-                  placeholder="Ex: Minha Fazer, Foguete"
-                  value={apelido}
-                  onChange={(e) => setApelido(e.target.value)}
-                />
-              </Field>
-            </div>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                          <div>
+                            <h4 style={{ fontSize: '0.92rem', margin: '0 0 2px', lineHeight: 1.3 }}>
+                              {item.nomePeca}
+                            </h4>
+                            <small style={{ color: '#64748b' }}>{item.categoria}</small>
+                          </div>
 
-            <Field label="URL da Foto (Opcional)">
-              <TextInput
-                type="url"
-                placeholder="https://exemplo.com/minha-moto.jpg"
-                value={fotoUrl}
-                onChange={(e) => setFotoUrl(e.target.value)}
-              />
-            </Field>
+                          <div style={{ marginTop: 8 }}>
+                            {item.precoPromocional && (
+                              <div style={{ fontSize: '0.78rem', textDecoration: 'line-through', color: '#94a3b8' }}>
+                                {formatMoney(item.precoVenda)}
+                              </div>
+                            )}
+                            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#006375' }}>
+                              {formatMoney(item.precoEfetivo)}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
 
-            {formError ? <ErrorState text={formError} /> : null}
-
-            <div className="actions">
-              <Button type="submit" disabled={saving}>
-                {saving ? 'Cadastrando...' : 'Salvar na Garagem'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
+                {/* Link final para ver todas */}
+                <div style={{ textAlign: 'center', marginTop: 20 }}>
+                  <Link
+                    to={`/busca?modeloMotoId=${activeMoto.modeloMotoId}&anoFabricacao=${activeMoto.anoFabricacao}`}
+                    style={{
+                      color: '#006375',
+                      fontWeight: 700,
+                      fontSize: '0.92rem',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Ver todas as peças compatíveis ({totalCountParts})
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <EmptyState text="Selecione ou adicione uma moto na coluna ao lado para visualizar peças compatíveis." />
+            )}
+          </div>
         </div>
       )}
 
-      {/* Formulário Modal de Edição */}
+      {/* Modal de Edição Rápida */}
       {editingMoto && (
-        <div className="card" style={{ margin: '20px 0', border: '2px solid var(--star)' }}>
-          <h3>
-            Editar Motocicleta: {editingMoto.marca} {editingMoto.modelo}
-          </h3>
-          <form onSubmit={handleUpdateMoto} className="form" style={{ marginTop: 12 }}>
-            <div className="grid" style={{ marginTop: 0 }}>
-              <Field label="Ano de Fabricação">
-                <TextInput
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: 16,
+          }}
+        >
+          <div className="card" style={{ width: '100%', maxWidth: 440 }}>
+            <h3>Editar Moto: {editingMoto.marca} {editingMoto.modelo}</h3>
+            <form onSubmit={handleSaveEdit} className="form" style={{ marginTop: 14 }}>
+              <div>
+                <label className="field-label-mono">Ano de Fabricação</label>
+                <input
                   type="number"
+                  className="input"
                   value={editAno}
                   onChange={(e) => setEditAno(e.target.value ? Number(e.target.value) : '')}
                   required
                 />
-              </Field>
-              <Field label="Apelido">
-                <TextInput
+              </div>
+              <div>
+                <label className="field-label-mono">Apelido (Opcional)</label>
+                <input
                   type="text"
+                  className="input"
                   value={editApelido}
                   onChange={(e) => setEditApelido(e.target.value)}
-                  placeholder="Ex: Minha Fazer"
+                  placeholder="Ex: Azulona"
                 />
-              </Field>
-            </div>
-            <Field label="URL da Foto">
-              <TextInput
-                type="url"
-                value={editFotoUrl}
-                onChange={(e) => setEditFotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
-            </Field>
-            {editError ? <ErrorState text={editError} /> : null}
-            <div className="actions">
-              <Button type="submit" disabled={savingEdit}>
-                {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setEditingMoto(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {loading && <Loading text="Carregando suas motos..." />}
-      {error && <ErrorState text={error} onRetry={carregarGaragem} />}
-
-      {!loading && !error && motos.length === 0 && (
-        <EmptyState text="Sua garagem está vazia! Cadastre sua moto acima para obter recomendações com 100% de compatibilidade." />
-      )}
-
-      {!loading && !error && motos.length > 0 && (
-        <div className="grid" style={{ marginTop: 20 }}>
-          {motos.map((moto) => {
-            const isActive = activeMoto?.id === moto.id;
-            return (
-              <Card
-                key={moto.id}
-                title={moto.apelido ? `${moto.apelido} (${moto.modelo})` : `${moto.marca} ${moto.modelo}`}
-                footer={
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%' }}>
-                    <Button
-                      type="button"
-                      variant={isActive ? 'primary' : 'outline'}
-                      onClick={() => handleSelectActive(moto)}
-                    >
-                      {isActive ? '✓ Moto Ativa' : 'Definir como Ativa'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="primary"
-                      onClick={() => handleBuscarPecas(moto)}
-                    >
-                      Buscar Peças
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => startEditing(moto)}
-                    >
-                      Editar
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      style={{ color: 'var(--danger)', marginLeft: 'auto' }}
-                      onClick={() => handleDeleteMoto(moto.id)}
-                    >
-                      Remover
-                    </Button>
-                  </div>
-                }
-              >
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  {moto.fotoMotoUrl ? (
-                    <img
-                      src={moto.fotoMotoUrl}
-                      alt={moto.modelo}
-                      style={{
-                        width: 80,
-                        height: 80,
-                        objectFit: 'cover',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border)',
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 'var(--radius)',
-                        background: 'var(--chip-bg)',
-                        color: 'var(--chip-text)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '2rem',
-                      }}
-                    >
-                      🏍️
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="chips-row" style={{ marginBottom: 6 }}>
-                      <span className="chip">{moto.marca}</span>
-                      <span className="chip chip-muted">Ano {moto.anoFabricacao}</span>
-                      {isActive && <span className="chip" style={{ background: 'var(--star)', color: '#fff' }}>Ativa</span>}
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.9rem' }}>
-                      Modelo: <strong>{moto.modelo}</strong>
-                    </p>
-                    {moto.anoInicio && (
-                      <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--muted)' }}>
-                        Série: {moto.anoInicio} - {moto.anoFim ?? 'presente'}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
+              </div>
+              <div>
+                <label className="field-label-mono">URL da Foto (Opcional)</label>
+                <input
+                  type="url"
+                  className="input"
+                  value={editFotoUrl}
+                  onChange={(e) => setEditFotoUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
+                <Button type="button" variant="ghost" onClick={() => setEditingMoto(null)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={savingEdit}>
+                  {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </section>

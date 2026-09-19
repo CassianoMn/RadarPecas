@@ -255,7 +255,7 @@ public static class DatabaseSeeder
                 var lojista1 = new Usuario
                 {
                     Nome = "Carlos Alberto (Lojista)",
-                    Email = "lojista@radarpecas.com.br",
+                    Email = "lojista@gmail.com",
                     SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 11),
                     TipoUsuario = TipoUsuario.LOJISTA,
                     DataCadastro = DateTime.UtcNow
@@ -265,7 +265,7 @@ public static class DatabaseSeeder
                 var lojista2 = new Usuario
                 {
                     Nome = "Mariana Costa (Lojista)",
-                    Email = "mariana@motopower.com.br",
+                    Email = "mariana@gmail.com",
                     SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 11),
                     TipoUsuario = TipoUsuario.LOJISTA,
                     DataCadastro = DateTime.UtcNow

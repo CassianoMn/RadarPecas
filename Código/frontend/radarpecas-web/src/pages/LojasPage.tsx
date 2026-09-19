@@ -1,247 +1,290 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, ApiError } from '../lib/api';
+import { api } from '../lib/api';
 import type { Loja } from '../types';
-import { Button, Card, Chip, EmptyState, ErrorState, Loading } from '../components/ui';
+import { EmptyState, FilterIcon, Loading, StarIcon } from '../components/ui';
 
 export function LojasPage() {
   const [lojas, setLojas] = useState<Loja[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [busca, setBusca] = useState('');
-  const [raioKm, setRaioKm] = useState<number | ''>('');
-
-  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [geoStatus, setGeoStatus] = useState<string>('');
-
-  function obterLocalizacao() {
-    if (!navigator.geolocation) {
-      setGeoStatus('Geolocalização não suportada.');
-      return;
-    }
-    setGeoLoading(true);
-    setGeoStatus('Obtendo localização...');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserCoords({
-          lat: pos.coords.latitude,
-          lon: pos.coords.longitude,
-        });
-        setGeoLoading(false);
-        setGeoStatus('✓ Localização obtida!');
-      },
-      (err) => {
-        setGeoLoading(false);
-        setGeoStatus('Não foi possível obter localização: ' + err.message);
-      },
-      { timeout: 8000 }
-    );
-  }
+  const [filtroAtivo, setFiltroAtivo] = useState<'proximas' | 'avaliacao'>('proximas');
 
   const carregarLojas = useCallback(async () => {
     setLoading(true);
-    setError('');
-
-    const params = new URLSearchParams();
-    if (userCoords) {
-      params.set('userLat', userCoords.lat.toString());
-      params.set('userLon', userCoords.lon.toString());
-    }
-    if (raioKm) {
-      params.set('raioKm', raioKm.toString());
-    }
-
     try {
-      const data = await api<Loja[]>(`/lojas?${params.toString()}`);
-      setLojas(data ?? []);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Erro ao carregar lista de lojas.');
-    } finally {
+      const query = new URLSearchParams();
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            query.set('userLat', pos.coords.latitude.toString());
+            query.set('userLon', pos.coords.longitude.toString());
+            try {
+              const data = await api<Loja[]>(`/lojas?${query.toString()}`);
+              setLojas(data ?? []);
+            } catch {
+              setLojas([]);
+            } finally {
+              setLoading(false);
+            }
+          },
+          async () => {
+            try {
+              const data = await api<Loja[]>('/lojas');
+              setLojas(data ?? []);
+            } catch {
+              setLojas([]);
+            } finally {
+              setLoading(false);
+            }
+          },
+          { timeout: 5000 }
+        );
+      } else {
+        const data = await api<Loja[]>('/lojas');
+        setLojas(data ?? []);
+        setLoading(false);
+      }
+    } catch {
+      setLojas([]);
       setLoading(false);
     }
-  }, [userCoords, raioKm]);
+  }, []);
 
   useEffect(() => {
     carregarLojas();
   }, [carregarLojas]);
 
-  // Filtro de texto local por nome ou endereço
-  const lojasFiltradas = lojas.filter((l) => {
-    if (!busca.trim()) return true;
-    const term = busca.toLowerCase();
-    return (
-      l.nomeFantasia.toLowerCase().includes(term) ||
-      l.enderecoCompleto.toLowerCase().includes(term)
-    );
+  // Ordenação de acordo com o filtro ativo
+  const lojasOrdenadas = [...lojas].sort((a, b) => {
+    if (filtroAtivo === 'avaliacao') {
+      return b.mediaAvaliacao - a.mediaAvaliacao;
+    }
+    return (a.distanciaKm ?? 99) - (b.distanciaKm ?? 99);
   });
 
   return (
     <section>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1>Lojas Parceiras</h1>
-          <p>Encontre autopeças e motopeças credenciadas mais perto de você.</p>
-        </div>
+      {/* Título & Subtítulo */}
+      <h1 style={{ fontSize: '1.9rem', marginBottom: 4 }}>Catálogo de Lojas</h1>
+      <p style={{ fontSize: '0.95rem', margin: '0 0 18px', color: '#64748b' }}>
+        Encontre as melhores oficinas e revendas perto de você.
+      </p>
+
+      {/* Linha de Filtros em Pílulas */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+        <button
+          type="button"
+          style={{
+            background: '#ffffff',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-pill)',
+            padding: '7px 16px',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <FilterIcon size={14} /> Filtros
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFiltroAtivo('proximas')}
+          style={{
+            background: filtroAtivo === 'proximas' ? '#006375' : '#ffffff',
+            color: filtroAtivo === 'proximas' ? '#ffffff' : '#334155',
+            border: '1px solid ' + (filtroAtivo === 'proximas' ? '#006375' : 'var(--border-strong)'),
+            borderRadius: 'var(--radius-pill)',
+            padding: '7px 16px',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>⌖</span> Mais Próximas
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFiltroAtivo('avaliacao')}
+          style={{
+            background: filtroAtivo === 'avaliacao' ? '#006375' : '#ffffff',
+            color: filtroAtivo === 'avaliacao' ? '#ffffff' : '#334155',
+            border: '1px solid ' + (filtroAtivo === 'avaliacao' ? '#006375' : 'var(--border-strong)'),
+            borderRadius: 'var(--radius-pill)',
+            padding: '7px 16px',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            transition: 'all 0.15s ease',
+          }}
+        >
+          <span>☆</span> Melhor Avaliação
+        </button>
+
+        <button
+          type="button"
+          style={{
+            background: '#ffffff',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-pill)',
+            padding: '7px 16px',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          Categorias <span>▾</span>
+        </button>
       </div>
 
-      {/* Controles de Filtro e Localização */}
-      <div
-        className="card"
-        style={{
-          margin: '16px 0 24px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 12,
-          alignItems: 'flex-end',
-        }}
-      >
-        <div>
-          <label style={{ fontSize: '0.75rem', fontFamily: 'var(--mono)', textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
-            Buscar por nome ou endereço
-          </label>
-          <input
-            type="search"
-            className="input"
-            placeholder="Ex: MotoPeças Central, Centro..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-          />
-        </div>
+      {loading && <Loading text="Carregando lojas credenciadas..." />}
 
-        <div>
-          <label style={{ fontSize: '0.75rem', fontFamily: 'var(--mono)', textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
-            Raio de distância
-          </label>
-          <select
-            className="input"
-            value={raioKm}
-            onChange={(e) => setRaioKm(e.target.value ? Number(e.target.value) : '')}
-          >
-            <option value="">Todas as lojas</option>
-            <option value="5">Até 5 km</option>
-            <option value="10">Até 10 km</option>
-            <option value="25">Até 25 km</option>
-            <option value="50">Até 50 km</option>
-          </select>
-        </div>
+      {/* Grid de 4 Colunas com os Cards de Lojas */}
+      {!loading && (
+        <div className="stores-catalog-grid">
+          {lojasOrdenadas.map((loja) => {
+            const isNew = loja.totalAvaliacoes === 0;
 
-        <div>
-          <label style={{ fontSize: '0.75rem', fontFamily: 'var(--mono)', textTransform: 'uppercase', color: 'var(--muted)', display: 'block', marginBottom: 4 }}>
-            Sua localização
-          </label>
-          <Button
-            type="button"
-            variant={userCoords ? 'outline' : 'ghost'}
-            style={{ width: '100%', padding: '10px 12px' }}
-            onClick={obterLocalizacao}
-            disabled={geoLoading}
-          >
-            {geoLoading ? 'Localizando...' : userCoords ? '📍 Atualizar Local' : '📍 Usar Minha Localização'}
-          </Button>
-        </div>
-      </div>
-
-      {geoStatus && (
-        <p style={{ fontSize: '0.85rem', color: userCoords ? 'var(--primary)' : 'var(--muted)', marginTop: -14, marginBottom: 16 }}>
-          {geoStatus}
-        </p>
-      )}
-
-      {loading && <Loading text="Carregando lojas parceiras..." />}
-      {error && <ErrorState text={error} onRetry={carregarLojas} />}
-
-      {!loading && !error && lojasFiltradas.length === 0 && (
-        <EmptyState text="Nenhuma loja encontrada com os filtros selecionados." />
-      )}
-
-      {!loading && !error && lojasFiltradas.length > 0 && (
-        <div className="grid">
-          {lojasFiltradas.map((loja) => (
-            <Card
-              key={loja.id}
-              title={loja.nomeFantasia}
-              footer={
-                <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Link className="btn btn-outline" to={`/lojas/${loja.id}`}>
-                    Ver Estoque & Avaliações
-                  </Link>
-                  {loja.telefoneContato && (
-                    <a
-                      href={`tel:${loja.telefoneContato.replace(/\D/g, '')}`}
-                      className="btn btn-ghost"
-                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+            return (
+              <article key={loja.id} className="store-catalog-card">
+                {/* Foto / Imagem da Loja com Badge de Avaliação */}
+                <div className="store-catalog-img-wrap">
+                  {loja.fotoPerfilUrl ? (
+                    <img src={loja.fotoPerfilUrl} alt={loja.nomeFantasia} />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '3rem',
+                        color: '#94a3b8',
+                      }}
                     >
-                      Ligar
-                    </a>
+                      🏪
+                    </div>
                   )}
+
+                  {/* Badge de Avaliação ou 'Novo' no canto superior direito */}
+                  <div className="badge-photo-topright">
+                    <div
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.92)',
+                        backdropFilter: 'blur(4px)',
+                        padding: '3px 8px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontFamily: 'var(--mono)',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: isNew ? '#006375' : '#0f172a',
+                      }}
+                    >
+                      {isNew ? (
+                        <>☆ Novo</>
+                      ) : (
+                        <>
+                          <StarIcon size={12} /> {loja.mediaAvaliacao.toFixed(1)} ({loja.totalAvaliacoes})
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              }
-            >
-              <div style={{ display: 'flex', gap: 14 }}>
-                {loja.fotoPerfilUrl ? (
-                  <img
-                    src={loja.fotoPerfilUrl}
-                    alt={loja.nomeFantasia}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 'var(--radius)',
-                      objectFit: 'cover',
-                      border: '1px solid var(--border)',
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 'var(--radius)',
-                      background: 'var(--chip-bg)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '1.8rem',
-                      flexShrink: 0,
-                    }}
-                  >
-                    🏪
-                  </div>
-                )}
 
-                <div style={{ flex: 1 }}>
-                  <div className="chips-row" style={{ marginBottom: 6 }}>
-                    {loja.distanciaKm != null && (
-                      <Chip variant="muted">{loja.distanciaKm.toFixed(1)} km</Chip>
-                    )}
-                    <span className="rating">
-                      ★ {loja.mediaAvaliacao.toFixed(1)}{' '}
-                      <span className="store-line">({loja.totalAvaliacoes})</span>
-                    </span>
-                  </div>
+                {/* Corpo do Card */}
+                <div className="store-catalog-body">
+                  <h3 style={{ fontSize: '1.05rem', margin: '0 0 6px' }}>{loja.nomeFantasia}</h3>
 
-                  <p style={{ margin: '4px 0', fontSize: '0.88rem', color: 'var(--text)' }}>
+                  {/* Chip de Distância real se calculada */}
+                  {loja.distanciaKm != null && (
+                    <div style={{ marginBottom: 10 }}>
+                      <span
+                        style={{
+                          background: '#ddf0f5',
+                          color: '#006375',
+                          fontFamily: 'var(--mono)',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: 'var(--radius-pill)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        📍 {loja.distanciaKm.toFixed(1)} km
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Endereço real da loja */}
+                  <p style={{ margin: '0 0 16px', fontSize: '0.82rem', color: '#64748b', lineHeight: 1.4 }}>
                     📍 {loja.enderecoCompleto}
                   </p>
 
-                  {loja.horariosFuncionamento && (
-                    <p style={{ margin: '2px 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                      🕒 {loja.horariosFuncionamento}
-                    </p>
-                  )}
-
-                  {loja.telefoneContato && (
-                    <p style={{ margin: '2px 0', fontSize: '0.8rem', color: 'var(--primary)' }}>
-                      📞 {loja.telefoneContato}
-                    </p>
-                  )}
+                  {/* Botão Ver Estoque */}
+                  <div style={{ marginTop: 'auto' }}>
+                    <Link
+                      to={`/lojas/${loja.id}`}
+                      className="btn btn-outline btn-block"
+                      style={{ padding: '8px 12px', fontSize: '0.8rem' }}
+                    >
+                      Ver Estoque
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </article>
+            );
+          })}
         </div>
       )}
+
+      {!loading && lojasOrdenadas.length === 0 && (
+        <EmptyState text="Nenhuma loja parceira cadastrada na região no momento." />
+      )}
+
+      {/* Botão Carregar Mais Lojas */}
+      <div style={{ textAlign: 'center', marginTop: 32 }}>
+        <button
+          type="button"
+          onClick={carregarLojas}
+          style={{
+            background: '#ffffff',
+            color: '#006375',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--radius-pill)',
+            padding: '10px 24px',
+            fontFamily: 'var(--mono)',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          Carregar mais lojas
+        </button>
+      </div>
     </section>
   );
 }

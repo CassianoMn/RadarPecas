@@ -478,12 +478,9 @@ export function LojaDetalhesPage() {
 
                 <div>
                   {user ? (
-                    <Button
-                      type="button"
-                      onClick={() => setShowAvaliarForm((v) => !v)}
-                    >
-                      {showAvaliarForm ? 'Cancelar' : '✍️ Avaliar esta Loja'}
-                    </Button>
+                    <Link to={`/lojas/${id}/avaliar`} className="btn">
+                      ✍️ Avaliar esta Loja
+                    </Link>
                   ) : (
                     <Link to="/login" className="btn btn-outline">
                       Entre para Avaliar

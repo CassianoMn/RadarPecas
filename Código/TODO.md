@@ -229,18 +229,30 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Implementar tela de lojas.
 - [x] Implementar avaliação da loja.
 
+> **Nota de Implementação (Protótipos de Alto Nível & Dados Reais)**:
+> - Todas as telas do motociclista foram adaptadas e alinhadas aos protótipos de alta fidelidade em `Requisitos/Prototipos de Alto Nivel/`:
+>   - Tela de Login (`Tela Login.png`) e Cadastro (`1.Tela Cadastro Usuário.png`) com logo oficial `radarPecasLogo.png`, alternador de visibilidade de senha e design limpo.
+>   - Tela inicial de exploração (`2.Tela inicial explorar .png`) em layout split-screen com barra lateral de filtros/busca e mapa interativo.
+>   - Garagem Virtual (`3. Tela Garagem Virtual.png`) em duas colunas (motos do usuário e peças recomendadas com contagem real).
+>   - Adição de Motocicleta (`4. Tela Adicionar Moto.png`) com seletores dependentes de marca/modelo/ano e upload de foto.
+>   - Busca e Filtros (`5. Tela Busca e Filtros.png`) com filtros de categoria, marca, preço e pílulas de raio.
+>   - Detalhes da Oferta (`6. Tela Detalhes do Produto.png`) com especificações técnicas reais, botão WhatsApp e verificação de compatibilidade.
+>   - Catálogo de Lojas (`7. Tela Catalogo de Lojas.png`) e Avaliação de Loja (`8. Tela Avaliar Loja.png`) com estrelas interativas.
+> - **Consistência de dados**: Remoção total de dados fictícios em todas as telas (distâncias só são exibidas quando calculadas via geolocalização `distanciaKm != null`, compatibilidade só é marcada quando a moto ativa do usuário é validada contra o catálogo, e ausência de dados exibe estados vazios `EmptyState` em vez de mocks).
+
 ## 13. Front-end — mapa
 
-- [ ] Integrar Leaflet.
-- [ ] Integrar React Leaflet.
-- [ ] Exibir localização do usuário quando houver consentimento.
-- [ ] Exibir marcadores das lojas.
-- [ ] Criar popup com informações básicas da loja.
-- [ ] Exibir preço da oferta no contexto do resultado.
-- [ ] Exibir distância aproximada.
-- [ ] Sincronizar filtros da busca com os marcadores.
-- [ ] Ajustar o mapa para diferentes tamanhos de tela.
-- [ ] Tratar ausência/perda de localização.
+- [x] Integrar Leaflet.
+- [x] Integrar React Leaflet / Leaflet nativo com ciclo de vida React (`useRef`/`useEffect`).
+- [x] Integrar OpenStreetMap oficial (`tileLayer` aberto e sem necessidade de API key, eliminando "api key required").
+- [x] Exibir localização do usuário quando houver consentimento (marcador estilo radar pulsante).
+- [x] Exibir marcadores das lojas (pins customizados com nome e ícone).
+- [x] Criar popup com informações básicas da loja (nome, endereço, nota média e link para ver estoque).
+- [x] Exibir preço da oferta no contexto do resultado.
+- [x] Exibir distância aproximada (calculada via API PostGIS).
+- [x] Sincronizar filtros da busca com os marcadores.
+- [x] Ajustar o mapa para diferentes tamanhos de tela (responsividade desktop split-screen e mobile).
+- [x] Tratar ausência/perda de localização (fallback gracioso para coordenadas padrão da capital e busca sem coordenadas).
 
 ## 14. Front-end — lojista
 
