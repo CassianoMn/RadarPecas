@@ -6,7 +6,6 @@
 .env.*.local
 *.user
 *.suo
-appsettings.Development.json
 appsettings.Local.json
 
 # ==========================================
