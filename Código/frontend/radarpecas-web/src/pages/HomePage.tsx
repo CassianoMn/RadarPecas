@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import { api } from '../lib/api';
+import { formatHorariosFuncionamento } from '../lib/formatters';
 import type { Loja } from '../types';
 import { EmptyState, FilterIcon, Loading, MicIcon, SearchIcon, StarIcon } from '../components/ui';
 
@@ -362,7 +363,7 @@ export function HomePage() {
 
                   {loja.horariosFuncionamento && (
                     <small style={{ color: '#94a3b8', display: 'block', fontSize: '0.75rem' }}>
-                      🕒 {loja.horariosFuncionamento}
+                      🕒 {formatHorariosFuncionamento(loja.horariosFuncionamento)}
                     </small>
                   )}
                 </div>

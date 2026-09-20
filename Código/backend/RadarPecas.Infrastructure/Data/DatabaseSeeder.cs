@@ -58,7 +58,7 @@ public static class DatabaseSeeder
                         Nome = "Vela de Ignição NGK CPR8EA-9",
                         Categoria = "Ignição",
                         Descricao = "Vela de ignição padrão resistiva NGK para motores monocilíndricos.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=500",
                         Especificacoes = "{\"grau_termico\": \"8\", \"rosca\": \"10mm\", \"eletrodo\": \"Níquel\"}"
                     },
                     new()
@@ -68,7 +68,7 @@ public static class DatabaseSeeder
                         Nome = "Pastilha de Freio Dianteira Cobreq Street N-917",
                         Categoria = "Freios",
                         Descricao = "Pastilha orgânica para disco dianteiro, alta durabilidade e frenagem precisa.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=500",
                         Especificacoes = "{\"posicao\": \"Dianteira\", \"material\": \"Orgânica\", \"linha\": \"Street\"}"
                     },
                     new()
@@ -108,7 +108,7 @@ public static class DatabaseSeeder
                         Nome = "Bateria Selada Heliar 12V 5Ah HTZ6L AGM",
                         Categoria = "Elétrica",
                         Descricao = "Bateria livre de manutenção com tecnologia AGM e alta corrente de partida.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=500",
                         Especificacoes = "{\"tensao\": \"12V\", \"capacidade\": \"5Ah\", \"cca\": \"50A\", \"tecnologia\": \"AGM / VRLA\"}"
                     },
                     new()
@@ -118,7 +118,7 @@ public static class DatabaseSeeder
                         Nome = "Óleo de Motor Mobil Super Moto 4T 10W-30 Semissintético 1L",
                         Categoria = "Lubrificantes",
                         Descricao = "Lubrificante semissintético de alta performance atendendo API SL e JASO MA2.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981285-6f0c94958bb6?w=500",
                         Especificacoes = "{\"viscosidade\": \"10W-30\", \"base\": \"Semissintético\", \"normas\": \"API SL / JASO MA2\", \"volume\": \"1 Litro\"}"
                     },
                     new()
@@ -128,7 +128,7 @@ public static class DatabaseSeeder
                         Nome = "Lâmpada de Farol H4 LED Philips Ultinon Moto 6000K",
                         Categoria = "Iluminação",
                         Descricao = "Lâmpada LED automotiva de feixe concentrado sem ofuscamento e luz branca pura.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1563720223185-11003d516935?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?w=500",
                         Especificacoes = "{\"encaixe\": \"H4\", \"temperatura_cor\": \"6000K\", \"potencia\": \"12W\", \"durabilidade\": \"1500h\"}"
                     },
                     new()
@@ -138,7 +138,7 @@ public static class DatabaseSeeder
                         Nome = "Cabo de Embreagem Reforçado Motobor CG 160",
                         Categoria = "Cabos & Comandos",
                         Descricao = "Cabo de embreagem com teflon interno de acionamento ultra macio e resistente.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1609873814058-a8928924184a?w=500",
                         Especificacoes = "{\"revestimento\": \"Teflon\", \"comprimento\": \"105cm\", \"garantia\": \"6 meses\"}"
                     },
                     new()
@@ -148,7 +148,7 @@ public static class DatabaseSeeder
                         Nome = "Correia de Transmissão CVT Gates Powerlink NMAX 160",
                         Categoria = "Transmissão",
                         Descricao = "Correia dentada de alta durabilidade e dissipação térmica para scooter.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=500",
+                        FotoPecaUrl = "https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=500",
                         Especificacoes = "{\"material\": \"EPDM com cordonéis de aramida\", \"perfil\": \"CVT\", \"scooter\": \"NMAX 160\"}"
                     }
                 };
@@ -313,8 +313,8 @@ public static class DatabaseSeeder
                     TelefoneContato = "(79) 98877-6655",
                     EmailContato = "vendas@motopower.com.br",
                     HorariosFuncionamento = "{\"seg_sex\": \"07:30 - 18:00\", \"sab\": \"08:00 - 12:00\"}",
-                    FotoPerfilUrl = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500",
-                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800" },
+                    FotoPerfilUrl = "https://images.unsplash.com/photo-1613214149922-f1809c99b414?w=500",
+                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1616422285623-13ff0162193c?w=800" },
                     Ativa = true
                 };
 

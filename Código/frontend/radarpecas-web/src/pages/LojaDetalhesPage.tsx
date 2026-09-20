@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { parseHorariosFuncionamento } from '../lib/formatters';
 import { useAuth } from '../auth/useAuth';
 import type { AvaliacoesResumo, EstoqueItem, Loja, PagedResult } from '../types';
 import { Button, Card, Chip, EmptyState, ErrorState, Field, Loading } from '../components/ui';
@@ -229,8 +230,14 @@ export function LojaDetalhesPage() {
           )}
           {loja.horariosFuncionamento && (
             <div>
-              <span style={{ color: 'var(--muted)', display: 'block' }}>Horário de Funcionamento</span>
-              <strong>{loja.horariosFuncionamento}</strong>
+              <span style={{ color: 'var(--muted)', display: 'block', marginBottom: 4 }}>Horário de Funcionamento</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {parseHorariosFuncionamento(loja.horariosFuncionamento).map((item, idx) => (
+                  <strong key={idx} style={{ fontSize: '0.92rem' }}>
+                    {item.label ? `${item.label}: ${item.valor}` : item.valor}
+                  </strong>
+                ))}
+              </div>
             </div>
           )}
         </div>

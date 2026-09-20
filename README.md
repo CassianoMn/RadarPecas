@@ -1,4 +1,4 @@
-﻿# 🏍️ RadarPeças
+# 🏍️ RadarPeças
 
 > **Plataforma de Geolocalização e Recomendação Inteligente para o Varejo de Motopeças**  
 > *Trabalho de Conclusão de Curso (TCC) — Bacharelado em Sistemas de Informação — Universidade Federal de Sergipe (UFS)*
@@ -25,7 +25,7 @@ O **RadarPeças** é uma plataforma web desenvolvida para mitigar a assimetria d
 | **Back-end** | C# / ASP.NET Core (.NET 8) | Web API RESTful, Injeção de Dependências, Arquitetura Limpa/Modular |
 | **Banco de Dados** | PostgreSQL + PostGIS | Tipos geométricos/geográficos, indexação espacial (GiST), JSONB para especificações de peças |
 | **ORM / Migrations** | Entity Framework Core / Npgsql | Mapeamento relacional e suporte a dados geoespaciais (`NetTopologySuite`) |
-| **Front-end** | React 18 + TypeScript + Vite | SPA responsiva (Mobile-First), Tailwind CSS / componentes modulares |
+| **Front-end** | React 19 + TypeScript + Vite | SPA responsiva (Mobile-First), Vanilla CSS com Design System personalizado |
 | **Mapas & Geocoding** | Leaflet.js / React-Leaflet + OpenStreetMap + Nominatim | Base cartográfica aberta e geocodificação de endereços |
 | **Autenticação** | JWT (JSON Web Token) + BCrypt / ASP.NET Identity | Autenticação stateless baseada em perfis (`Motociclista`, `Lojista`) |
 
@@ -146,5 +146,74 @@ O banco de dados relacional e espacial é estruturado em quatro módulos centrai
 
 ---
 
+## 🚀 Como Executar o Projeto Localmente
 
+### 📋 Pré-requisitos
+- **.NET 8 SDK** (para compilar e rodar a API ASP.NET Core)
+- **Node.js 18+ (LTS)** e **npm** (para o front-end React)
+- **PostgreSQL 14+** com extensão **PostGIS** habilitada (porta padrão: `5432`)
 
+---
+
+### ⚡ Execução Rápida (Windows)
+
+Na raiz da pasta `Código`, execute o script utilitário batch:
+
+```bat
+cd Código
+rodar-radarpecas.bat
+```
+
+Esse script verifica as dependências, valida a conexão com o PostgreSQL, instala os pacotes do front-end na primeira execução e sobe simultaneamente a API (.NET) e o front-end (Vite) em terminais dedicados.
+
+---
+
+### 🔧 Execução Manual
+
+#### 1. Banco de Dados
+Certifique-se de que o PostgreSQL está em execução na porta `5432` e crie o banco especificado no `appsettings.Development.json` (por exemplo, `radarpecas_db` ou `radarPecas`):
+
+```sql
+CREATE DATABASE "radarpecas_db";
+\c "radarpecas_db";
+CREATE EXTENSION IF NOT EXISTS postgis;
+```
+
+> **Nota:** Ao iniciar, a API executa automaticamente o script `AnaliseProjeto/DB_radarPecas.sql` por meio do `DatabaseInitializer` e popula a base com o `DatabaseSeeder`, caso a base esteja vazia.
+
+#### 2. Back-end (ASP.NET Core .NET 8)
+```bash
+cd Código/backend
+dotnet restore
+dotnet run --project RadarPecas.Api --launch-profile http
+```
+- API Base: `http://localhost:5150`
+- Swagger UI: `http://localhost:5150/swagger`
+- Healthcheck: `http://localhost:5150/api/health`
+
+#### 3. Front-end (React 19 + Vite)
+```bash
+cd Código/frontend/radarpecas-web
+npm install
+npm run dev -- --port 5173
+```
+- Aplicação Web: `http://localhost:5173`
+
+---
+
+## 🔑 Contas de Teste (Carga Inicial do Seeder)
+
+O banco é pré-carregado com usuários demonstrativos e dados reais de oficinas e peças para testes:
+
+| Perfil | E-mail | Senha | Descrição |
+|---|---|---|---|
+| **Motociclista** | `motociclista@radarpecas.com.br` | `123456` | Lucas Oliveira (garagem com Honda CG 160 e Yamaha FZ25) |
+| **Lojista 1** | `lojista@gmail.com` | `123456` | Carlos Alberto — Radar Motos & Peças Central (Centro Aracaju) |
+| **Lojista 2** | `mariana@gmail.com` | `123456` | Mariana Costa — MotoPower Peças & Oficina (Siqueira Campos) |
+
+---
+
+## 🗄️ Scripts do Banco de Dados (`AnaliseProjeto/`)
+
+- **`DB_radarPecas.sql`**: Script DDL oficial com a definição das tabelas, tipos geométricos PostGIS, índices e constraints. É o arquivo consumido pelo `DatabaseInitializer.cs` para criar o banco de forma transparente no primeiro boot.
+- **`dump_radarPecas.sql`**: Snapshot/backup completo gerado via `pg_dump` contendo o schema e uma carga estática de registros. É útil para restauração direta manual em bancos externos via `psql` ou ferramentas visuais (DBeaver, pgAdmin) sem passar pelo inicializador .NET.
