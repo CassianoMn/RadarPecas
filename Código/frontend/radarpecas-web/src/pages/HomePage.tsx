@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import { api } from '../lib/api';
 import { formatHorariosFuncionamento } from '../lib/formatters';
-import type { Loja } from '../types';
+import type { Loja, LocalizacaoSugestao } from '../types';
 import { EmptyState, FilterIcon, Loading, MicIcon, SearchIcon, StarIcon } from '../components/ui';
 
 export function HomePage() {
@@ -16,49 +16,59 @@ export function HomePage() {
   const [selectedLojaId, setSelectedLojaId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mapa Leaflet
+  // Busca de Localização no Mapa (Geocoding & Autocomplete)
+  const [locationQuery, setLocationQuery] = useState('');
+  const [sugestoes, setSugestoes] = useState<LocalizacaoSugestao[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
+  // Mapa Leaflet & Referências
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersGroupRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.Marker | null>(null);
+  const searchLocationMarkerRef = useRef<L.Marker | null>(null);
+  const suggestionsContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const justSelectedRef = useRef(false);
 
   const categories = ['Pneus', 'Óleos', 'Freios', 'Relação', 'Baterias', 'Filtros'];
 
-  // Carregar lojas reais da API (passando geolocalização quando disponível)
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const query = new URLSearchParams();
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-              query.set('userLat', pos.coords.latitude.toString());
-              query.set('userLon', pos.coords.longitude.toString());
-              const lojasData = await api<Loja[]>(`/lojas?${query.toString()}`);
-              setLojas(lojasData ?? []);
-              setLoading(false);
-            },
-            async () => {
-              const lojasData = await api<Loja[]>('/lojas');
-              setLojas(lojasData ?? []);
-              setLoading(false);
-            },
-            { timeout: 5000 }
-          );
-        } else {
-          const lojasData = await api<Loja[]>('/lojas');
-          setLojas(lojasData ?? []);
-          setLoading(false);
-        }
-      } catch {
-        setLojas([]);
-        setLoading(false);
+  const carregarLojasPorCoordenadas = useCallback(async (lat?: number, lon?: number) => {
+    setLoading(true);
+    try {
+      const query = new URLSearchParams();
+      if (lat != null && lon != null) {
+        query.set('userLat', lat.toString());
+        query.set('userLon', lon.toString());
       }
+      const queryString = query.toString();
+      const lojasData = await api<Loja[]>(queryString ? `/lojas?${queryString}` : '/lojas');
+      setLojas(lojasData ?? []);
+    } catch {
+      setLojas([]);
+    } finally {
+      setLoading(false);
     }
-
-    loadData();
   }, []);
+
+  // Carregar lojas reais da API (passando geolocalização inicial quando disponível)
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          carregarLojasPorCoordenadas(pos.coords.latitude, pos.coords.longitude);
+        },
+        () => {
+          carregarLojasPorCoordenadas();
+        },
+        { timeout: 5000 }
+      );
+    } else {
+      carregarLojasPorCoordenadas();
+    }
+  }, [carregarLojasPorCoordenadas]);
 
   // Inicializar o Mapa Leaflet com OpenStreetMap
   useEffect(() => {
@@ -102,16 +112,24 @@ export function HomePage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          userMarker.setLatLng([lat, lng]);
-          map.setView([lat, lng], 14);
+          if (!mapRef.current || !userMarkerRef.current) return;
+          try {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            userMarkerRef.current.setLatLng([lat, lng]);
+            mapRef.current.setView([lat, lng], 14);
+          } catch {
+            // Ignora se o mapa estiver desmontado ou inicializando
+          }
         },
         () => {}
       );
     }
 
     return () => {
+      userMarkerRef.current = null;
+      searchLocationMarkerRef.current = null;
+      markersGroupRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -208,6 +226,138 @@ export function HomePage() {
   function handleZoomOut() {
     if (mapRef.current) mapRef.current.zoomOut();
   }
+
+  // Debounce para autocomplete de localizações
+  useEffect(() => {
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
+
+    if (!locationQuery || locationQuery.trim().length < 2) {
+      setSugestoes([]);
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoadingSuggestions(true);
+      try {
+        const res = await api<LocalizacaoSugestao[]>(
+          `/geocoding/sugestoes?query=${encodeURIComponent(locationQuery.trim())}&limite=15`
+        );
+        const items = res ?? [];
+        setSugestoes(items);
+        setShowSuggestions(items.length > 0);
+        setHighlightedIndex(-1);
+      } catch {
+        setSugestoes([]);
+        setShowSuggestions(false);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [locationQuery]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        suggestionsContainerRef.current &&
+        !suggestionsContainerRef.current.contains(e.target as Node) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const scrollSuggestionIntoView = (index: number) => {
+    if (!suggestionsContainerRef.current) return;
+    const items = suggestionsContainerRef.current.querySelectorAll('.map-suggestion-item');
+    if (items[index]) {
+      (items[index] as HTMLElement).scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  };
+
+  const handleSelectLocation = async (loc: LocalizacaoSugestao) => {
+    justSelectedRef.current = true;
+    setLocationQuery(loc.titulo || loc.displayName);
+    setShowSuggestions(false);
+    setSugestoes([]);
+    setHighlightedIndex(-1);
+
+    const lat = Number(loc.latitude);
+    const lon = Number(loc.longitude);
+
+    if (mapRef.current) {
+      mapRef.current.flyTo([lat, lon], 14, { duration: 1.5 });
+
+      // Atualizar ou criar marcador da localização buscada
+      if (!searchLocationMarkerRef.current) {
+        const searchPinIcon = L.divIcon({
+          className: 'leaflet-custom-marker-search',
+          html: `
+            <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+              <div style="background: #006375; color: #ffffff; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-bottom: 4px; white-space: nowrap;">
+                📍 ${loc.titulo}
+              </div>
+              <div style="width: 20px; height: 20px; border-radius: 50%; background: #006375; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35);"></div>
+            </div>
+          `,
+          iconSize: [140, 50],
+          iconAnchor: [70, 50],
+        });
+        searchLocationMarkerRef.current = L.marker([lat, lon], { icon: searchPinIcon }).addTo(mapRef.current);
+      } else {
+        searchLocationMarkerRef.current.setLatLng([lat, lon]);
+      }
+    }
+
+    await carregarLojasPorCoordenadas(lat, lon);
+  };
+
+  const handleLocationKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || sugestoes.length === 0) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        setShowSuggestions(false);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => {
+        const next = prev < sugestoes.length - 1 ? prev + 1 : 0;
+        scrollSuggestionIntoView(next);
+        return next;
+      });
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => {
+        const next = prev > 0 ? prev - 1 : sugestoes.length - 1;
+        scrollSuggestionIntoView(next);
+        return next;
+      });
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && highlightedIndex < sugestoes.length) {
+        handleSelectLocation(sugestoes[highlightedIndex]);
+      } else if (sugestoes.length > 0) {
+        handleSelectLocation(sugestoes[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setHighlightedIndex(-1);
+    }
+  };
 
   return (
     <div className="explore-container">
@@ -375,18 +525,86 @@ export function HomePage() {
 
       {/* PAINEL DIREITO: MAPA INTERATIVO OPENSTREETMAP */}
       <div className="explore-map-wrapper">
-        {/* Barra flutuante de busca sobre o mapa */}
-        <div className="map-floating-search">
-          <SearchIcon size={18} />
-          <input
-            type="search"
-            placeholder="Search ..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
-          />
-          <span style={{ color: '#94a3b8', cursor: 'pointer' }}>⧩</span>
-          <span style={{ color: '#94a3b8', cursor: 'pointer' }}>☷</span>
+        {/* Barra flutuante de busca de localização sobre o mapa com autocomplete */}
+        <div className="map-floating-search-wrapper">
+          <div className="map-floating-search">
+            <SearchIcon size={18} />
+            <input
+              ref={searchInputRef}
+              type="search"
+              placeholder="Buscar localização..."
+              value={locationQuery}
+              onChange={(e) => {
+                justSelectedRef.current = false;
+                setLocationQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => {
+                if (sugestoes.length > 0) setShowSuggestions(true);
+              }}
+              onKeyDown={handleLocationKeyDown}
+              aria-label="Buscar localização"
+              autoComplete="off"
+            />
+            {loadingSuggestions && (
+              <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>⏳</span>
+            )}
+            {locationQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  justSelectedRef.current = false;
+                  setLocationQuery('');
+                  setSugestoes([]);
+                  setShowSuggestions(false);
+                  if (searchLocationMarkerRef.current) {
+                    searchLocationMarkerRef.current.remove();
+                    searchLocationMarkerRef.current = null;
+                  }
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Limpar localização"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown com limite visual de 3 sugestões e scroll até 15 */}
+          {showSuggestions && sugestoes.length > 0 && (
+            <div ref={suggestionsContainerRef} className="map-location-suggestions" role="listbox">
+              {sugestoes.map((sugestao, idx) => {
+                const isActive = highlightedIndex === idx;
+                return (
+                  <div
+                    key={`${sugestao.latitude}-${sugestao.longitude}-${idx}`}
+                    className={`map-suggestion-item ${isActive ? 'is-active' : ''}`}
+                    onClick={() => handleSelectLocation(sugestao)}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    role="option"
+                    aria-selected={isActive}
+                  >
+                    <div className="map-suggestion-icon">📍</div>
+                    <div className="map-suggestion-content">
+                      <span className="map-suggestion-title">{sugestao.titulo}</span>
+                      {sugestao.subtitulo && (
+                        <span className="map-suggestion-subtitle">{sugestao.subtitulo}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Controles de navegação do mapa */}

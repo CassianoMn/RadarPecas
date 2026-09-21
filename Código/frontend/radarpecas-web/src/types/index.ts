@@ -152,3 +152,12 @@ export interface EstoqueItem {
   dataFimPromocao?: string | null;
   atualizadoEm: string;
 }
+
+export interface LocalizacaoSugestao {
+  displayName: string;
+  titulo: string;
+  subtitulo?: string | null;
+  latitude: number;
+  longitude: number;
+  tipo?: string | null;
+}

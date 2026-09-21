@@ -637,7 +637,7 @@ a {
   height: 100%;
 }
 
-.map-floating-search {
+.map-floating-search-wrapper {
   position: absolute;
   top: 16px;
   left: 50%;
@@ -645,6 +645,10 @@ a {
   z-index: 500;
   width: 90%;
   max-width: 440px;
+}
+
+.map-floating-search {
+  width: 100%;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(8px);
   padding: 8px 16px;
@@ -654,6 +658,13 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.map-floating-search:focus-within {
+  border-color: #006375;
+  box-shadow: 0 4px 14px rgba(0, 99, 117, 0.18);
+  background: #ffffff;
 }
 
 .map-floating-search input {
@@ -662,6 +673,111 @@ a {
   outline: none;
   font-size: 0.9rem;
   flex: 1;
+}
+
+/* Sugestões de Localização Dropdown */
+.map-location-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+  /* Limite visual de exatamente 3 sugestões por vez (~54px cada = 162px max-height) */
+  max-height: 162px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-location-suggestions::-webkit-scrollbar {
+  width: 6px;
+}
+
+.map-location-suggestions::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.map-location-suggestions::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.map-location-suggestions::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.map-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+  user-select: none;
+  min-height: 54px;
+  box-sizing: border-box;
+}
+
+.map-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.map-suggestion-item:hover,
+.map-suggestion-item.is-active {
+  background: #f0fdfa;
+}
+
+.map-suggestion-item.is-active .map-suggestion-title {
+  color: #006375;
+}
+
+.map-suggestion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.map-suggestion-item.is-active .map-suggestion-icon,
+.map-suggestion-item:hover .map-suggestion-icon {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.map-suggestion-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+}
+
+.map-suggestion-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-suggestion-subtitle {
+  font-size: 0.76rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .map-controls-panel {
