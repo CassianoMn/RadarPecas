@@ -14,6 +14,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      // Desativada temporariamente: no eslint-plugin-react-hooks v7 (React 19), essa regra sinaliza
+      // chamadas de setState em efeitos assíncronos de carregamento de dados (ex: carregarGaragem).
+      // Mantida off para evitar falsos positivos até adoção de data-fetching pattern dedicado (ex: TanStack Query).
       'react-hooks/set-state-in-effect': 'off',
       'react-refresh/only-export-components': [
         'warn',

@@ -118,15 +118,82 @@ export function OfertaDetalhesPage() {
           )}
 
           {/* Card de Especificações Técnicas */}
-          {oferta.peca.especificacoes && (
-            <div style={{ marginTop: 24 }}>
-              <Card title="Especificações Técnicas">
-                <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.6, color: '#334155' }}>
-                  {oferta.peca.especificacoes}
-                </p>
-              </Card>
-            </div>
-          )}
+          {oferta.peca.especificacoes && (() => {
+            let specs: Record<string, string> = {};
+            try {
+              specs = JSON.parse(oferta.peca.especificacoes);
+            } catch {
+              // Fallback: se não for JSON válido, mostra como texto
+              return (
+                <div style={{ marginTop: 24 }}>
+                  <Card title="Especificações Técnicas">
+                    <p style={{ margin: 0, fontSize: '0.92rem', lineHeight: 1.6, color: '#334155' }}>
+                      {oferta.peca.especificacoes}
+                    </p>
+                  </Card>
+                </div>
+              );
+            }
+
+            const formatLabel = (key: string) =>
+              key
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+
+            return (
+              <div style={{ marginTop: 24 }}>
+                <Card title="Especificações Técnicas">
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 0,
+                      borderRadius: 'var(--radius)',
+                      overflow: 'hidden',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    {Object.entries(specs).map(([key, value], idx) => (
+                      <div
+                        key={key}
+                        style={{
+                          display: 'contents',
+                        }}
+                      >
+                        <div
+                          style={{
+                            padding: '10px 14px',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            fontFamily: 'var(--mono)',
+                            color: '#475569',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.02em',
+                            background: idx % 2 === 0 ? '#f8fafc' : '#ffffff',
+                            borderBottom: '1px solid var(--border)',
+                          }}
+                        >
+                          {formatLabel(key)}
+                        </div>
+                        <div
+                          style={{
+                            padding: '10px 14px',
+                            fontSize: '0.9rem',
+                            color: '#0f172a',
+                            fontWeight: 600,
+                            background: idx % 2 === 0 ? '#f8fafc' : '#ffffff',
+                            borderBottom: '1px solid var(--border)',
+                          }}
+                        >
+                          {value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            );
+          })()}
         </div>
 
         {/* COLUNA DIREITA: PREÇO, RESERVA & INFORMAÇÕES DA LOJA */}

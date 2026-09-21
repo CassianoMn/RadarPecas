@@ -1,3 +1,14 @@
+-- ============================================================================
+-- RADARPEÇAS - SNAPSHOT DE DADOS E SCHEMA DO BANCO (DUMP POSTGRESQL)
+-- ============================================================================
+-- Papel deste arquivo:
+-- 1. O schema oficial da aplicação é definido em "AnaliseProjeto/DB_radarPecas.sql"
+--    e é aplicado automaticamente pelo DatabaseInitializer do ASP.NET Core ao
+--    iniciar a API se o banco estiver vazio.
+-- 2. Este arquivo ("dump_radarPecas.sql") é um backup/snapshot completo gerado
+--    via pg_dump contendo o DDL e dados populados de teste. Serve para restauração
+--    manual direta (psql / pgAdmin) ou consulta de referência do estado do banco.
+-- ============================================================================
 --
 -- PostgreSQL database dump
 --
@@ -374,16 +385,16 @@ INSERT INTO public.estoque_loja VALUES ('ef80d6c2-93c5-4323-9629-7ceb2c191e1e', 
 -- Data for Name: garagem_virtual; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.garagem_virtual VALUES ('58646842-6376-4903-878f-323973d90766', 'cf8828f2-1aa1-4534-844b-1899e5803a8c', 11, 2023, 'Fazer 250 de Viagem', 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500');
-INSERT INTO public.garagem_virtual VALUES ('e611f1da-cd4a-4c9c-80ea-5cdac07887a8', 'cf8828f2-1aa1-4534-844b-1899e5803a8c', 1, 2022, 'Titan 160 do Dia a Dia', 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500');
+INSERT INTO public.garagem_virtual VALUES ('58646842-6376-4903-878f-323973d90766', 'cf8828f2-1aa1-4534-844b-1899e5803a8c', 11, 2023, 'Fazer 250 de Viagem', 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/YAMAHA_FZ-S.jpg/800px-YAMAHA_FZ-S.jpg');
+INSERT INTO public.garagem_virtual VALUES ('e611f1da-cd4a-4c9c-80ea-5cdac07887a8', 'cf8828f2-1aa1-4534-844b-1899e5803a8c', 1, 2022, 'Titan 160 do Dia a Dia', 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Honda_CG_150_Titan.jpg/800px-Honda_CG_150_Titan.jpg');
 
 
 --
 -- Data for Name: lojas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.lojas VALUES ('3c262f1f-fc16-4f8c-b78c-dc8b2e414327', '334e7d2b-26a3-4d29-b048-807ac9e0b646', 'Radar Motos & Peças Central', '12.345.678/0001-90', 'Av. Barão de Maruim, 500 - Centro, Aracaju - SE', -10.91670000, -37.05000000, '(79) 99988-7766', 'contato@radarmotosaracaju.com.br', '{"sab": "08:00 - 13:00", "seg_sex": "08:00 - 18:00"}', 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=500', '{https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800}', true);
-INSERT INTO public.lojas VALUES ('803b36f8-a433-4f85-ba75-0cfc13534110', '5dfadb41-6ebd-41c2-86f0-803991b5379a', 'MotoPower Peças & Oficina', '98.765.432/0001-10', 'Rua Mariano Salmeron, 250 - Siqueira Campos, Aracaju - SE', -10.92340000, -37.07210000, '(79) 98877-6655', 'vendas@motopower.com.br', '{"sab": "08:00 - 12:00", "seg_sex": "07:30 - 18:00"}', 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500', '{https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800}', true);
+INSERT INTO public.lojas VALUES ('3c262f1f-fc16-4f8c-b78c-dc8b2e414327', '334e7d2b-26a3-4d29-b048-807ac9e0b646', 'Radar Motos & Peças Central', '12.345.678/0001-90', 'Av. Barão de Maruim, 500 - Centro, Aracaju - SE', -10.91670000, -37.05000000, '(79) 99988-7766', 'contato@radarmotosaracaju.com.br', '{"sab": "08:00 - 13:00", "seg_sex": "08:00 - 18:00"}', 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600', '{https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600}', true);
+INSERT INTO public.lojas VALUES ('803b36f8-a433-4f85-ba75-0cfc13534110', '5dfadb41-6ebd-41c2-86f0-803991b5379a', 'MotoPower Peças & Oficina', '98.765.432/0001-10', 'Rua Mariano Salmeron, 250 - Siqueira Campos, Aracaju - SE', -10.92340000, -37.07210000, '(79) 98877-6655', 'vendas@motopower.com.br', '{"sab": "08:00 - 12:00", "seg_sex": "07:30 - 18:00"}', 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600', '{https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600}', true);
 
 
 --
@@ -414,16 +425,16 @@ INSERT INTO public.modelos_moto VALUES (18, 'Yamaha', 'Fluo 125', 2022, 2026);
 -- Data for Name: pecas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.pecas VALUES (1, 'VELA-NGK-CPR8EA9', '7897707504268', 'Vela de Ignição NGK CPR8EA-9', 'Vela de ignição padrão resistiva NGK para motores monocilíndricos.', 'Ignição', 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=500', '{"rosca": "10mm", "eletrodo": "Níquel", "grau_termico": "8"}');
-INSERT INTO public.pecas VALUES (2, 'PAST-COBREQ-N917', '7892679091702', 'Pastilha de Freio Dianteira Cobreq Street N-917', 'Pastilha orgânica para disco dianteiro, alta durabilidade e frenagem precisa.', 'Freios', 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500', '{"linha": "Street", "posicao": "Dianteira", "material": "Orgânica"}');
-INSERT INTO public.pecas VALUES (3, 'FILT-OLEO-FRAM-CH6015', '7896489311024', 'Filtro de Óleo Fram CH6015', 'Filtro de óleo de alta retenção de impurezas para proteção do motor.', 'Filtros', 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=500', '{"tipo": "Refil interno", "meio_filtrante": "Celulose microfibra"}');
-INSERT INTO public.pecas VALUES (4, 'KIT-VAZ-CG160-RET', '7891234567890', 'Kit Relação Transmissão Vaz com Retentor Aço 1045', 'Kit completo de transmissão (coroa, pinhão e corrente com o-ring retentor).', 'Transmissão', 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=500', '{"aco": "1045", "coroa": "44D", "pinhao": "15D", "corrente": "428HO-118L com retentor"}');
-INSERT INTO public.pecas VALUES (5, 'PNEU-PIRELLI-CITY-9090', '7898523697412', 'Pneu Traseiro Pirelli City Dragon 90/90-18 57P TT', 'Pneu para uso urbano com excelente rendimento quilométrico e aderência no molhado.', 'Pneus', 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500', '{"medida": "90/90-18", "posicao": "Traseiro", "indice_vel": "P (150 km/h)", "indice_carga": "57 (230 kg)"}');
-INSERT INTO public.pecas VALUES (6, 'BAT-HELIAR-HTZ6L', '7891472583690', 'Bateria Selada Heliar 12V 5Ah HTZ6L AGM', 'Bateria livre de manutenção com tecnologia AGM e alta corrente de partida.', 'Elétrica', 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500', '{"cca": "50A", "tensao": "12V", "capacidade": "5Ah", "tecnologia": "AGM / VRLA"}');
-INSERT INTO public.pecas VALUES (7, 'OLEO-MOBIL-10W30-4T', '7896541230987', 'Óleo de Motor Mobil Super Moto 4T 10W-30 Semissintético 1L', 'Lubrificante semissintético de alta performance atendendo API SL e JASO MA2.', 'Lubrificantes', 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500', '{"base": "Semissintético", "normas": "API SL / JASO MA2", "volume": "1 Litro", "viscosidade": "10W-30"}');
-INSERT INTO public.pecas VALUES (8, 'LAMP-LED-PHILIPS-H4', '7894561237895', 'Lâmpada de Farol H4 LED Philips Ultinon Moto 6000K', 'Lâmpada LED automotiva de feixe concentrado sem ofuscamento e luz branca pura.', 'Iluminação', 'https://images.unsplash.com/photo-1563720223185-11003d516935?w=500', '{"encaixe": "H4", "potencia": "12W", "durabilidade": "1500h", "temperatura_cor": "6000K"}');
-INSERT INTO public.pecas VALUES (9, 'CABO-EMB-MOTOBOR-CG160', '7893214569871', 'Cabo de Embreagem Reforçado Motobor CG 160', 'Cabo de embreagem com teflon interno de acionamento ultra macio e resistente.', 'Cabos & Comandos', 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500', '{"garantia": "6 meses", "comprimento": "105cm", "revestimento": "Teflon"}');
-INSERT INTO public.pecas VALUES (10, 'CORREIA-GATES-NMAX', '7896547893215', 'Correia de Transmissão CVT Gates Powerlink NMAX 160', 'Correia dentada de alta durabilidade e dissipação térmica para scooter.', 'Transmissão', 'https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=500', '{"perfil": "CVT", "scooter": "NMAX 160", "material": "EPDM com cordonéis de aramida"}');
+INSERT INTO public.pecas VALUES (1, 'VELA-NGK-CPR8EA9', '7897707504268', 'Vela de Ignição NGK CPR8EA-9', 'Vela de ignição padrão resistiva NGK para motores monocilíndricos.', 'Ignição', 'https://http2.mlstatic.com/D_NQ_NP_876209-MLB108040626802_032026-O.webp', '{"rosca": "10mm", "eletrodo": "Níquel", "grau_termico": "8"}');
+INSERT INTO public.pecas VALUES (2, 'PAST-COBREQ-N917', '7892679091702', 'Pastilha de Freio Dianteira Cobreq Street N-917', 'Pastilha orgânica para disco dianteiro, alta durabilidade e frenagem precisa.', 'Freios', 'https://karhub-images.karhub.com.br/234957-pastilha-de-freio-dianteira-1726498351871.jpeg', '{"linha": "Street", "posicao": "Dianteira", "material": "Orgânica"}');
+INSERT INTO public.pecas VALUES (3, 'FILT-OLEO-FRAM-CH6015', '7896489311024', 'Filtro de Óleo Fram CH6015', 'Filtro de óleo de alta retenção de impurezas para proteção do motor.', 'Filtros', 'https://fortnine.ca/media/catalog/product/cache/dd4850ad4231b6306bceadf38a0bbeed/catalogimages/fram/extra-guard-oil-filter-cartridge-ch6015.jpg', '{"tipo": "Refil interno", "meio_filtrante": "Celulose microfibra"}');
+INSERT INTO public.pecas VALUES (4, 'KIT-VAZ-CG160-RET', '7891234567890', 'Kit Relação Transmissão Vaz com Retentor Aço 1045', 'Kit completo de transmissão (coroa, pinhão e corrente com o-ring retentor).', 'Transmissão', 'https://http2.mlstatic.com/D_NQ_NP_2X_881930-MLU75562498498_042024-F.webp', '{"aco": "1045", "coroa": "44D", "pinhao": "15D", "corrente": "428HO-118L com retentor"}');
+INSERT INTO public.pecas VALUES (5, 'PNEU-PIRELLI-CITY-9090', '7898523697412', 'Pneu Traseiro Pirelli City Dragon 90/90-18 57P TT', 'Pneu para uso urbano com excelente rendimento quilométrico e aderência no molhado.', 'Pneus', 'https://tyre-images.pirelli.com/MKTData/MOTO/files/2094/mototopimage/pirelli_moto_city_dragon_base_1_992x992.png', '{"medida": "90/90-18", "posicao": "Traseiro", "indice_vel": "P (150 km/h)", "indice_carga": "57 (230 kg)"}');
+INSERT INTO public.pecas VALUES (6, 'BAT-HELIAR-HTZ6L', '7891472583690', 'Bateria Selada Heliar 12V 5Ah HTZ6L AGM', 'Bateria livre de manutenção com tecnologia AGM e alta corrente de partida.', 'Elétrica', 'https://http2.mlstatic.com/D_NQ_NP_2X_871209-MLU72521367498_102023-F.webp', '{"cca": "50A", "tensao": "12V", "capacidade": "5Ah", "tecnologia": "AGM / VRLA"}');
+INSERT INTO public.pecas VALUES (7, 'OLEO-MOBIL-10W30-4T', '7896541230987', 'Óleo de Motor Mobil Super Moto 4T 10W-30 Semissintético 1L', 'Lubrificante semissintético de alta performance atendendo API SL e JASO MA2.', 'Lubrificantes', 'https://cdn.awsli.com.br/600x450/877/877231/produto/221477213/mobil-4t-10w30-3egdm9prtu.png', '{"base": "Semissintético", "normas": "API SL / JASO MA2", "volume": "1 Litro", "viscosidade": "10W-30"}');
+INSERT INTO public.pecas VALUES (8, 'LAMP-LED-PHILIPS-H4', '7894561237895', 'Lâmpada de Farol H4 LED Philips Ultinon Moto 6000K', 'Lâmpada LED automotiva de feixe concentrado sem ofuscamento e luz branca pura.', 'Iluminação', 'https://fortbras.vteximg.com.br/arquivos/ids/318302/lampada-philips-ultinon-led-moto-luz-branca-hs1-h4-12v-9w-6000k-farol-11458umx1-hipervarejo-1.jpg', '{"encaixe": "H4", "potencia": "12W", "durabilidade": "1500h", "temperatura_cor": "6000K"}');
+INSERT INTO public.pecas VALUES (9, 'CABO-EMB-MOTOBOR-CG160', '7893214569871', 'Cabo de Embreagem Reforçado Motobor CG 160', 'Cabo de embreagem com teflon interno de acionamento ultra macio e resistente.', 'Cabos & Comandos', 'https://www.motokart.com.br/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/c/a/cabo_embreagem_titan_fan_start_160_1_2.jpg', '{"garantia": "6 meses", "comprimento": "105cm", "revestimento": "Teflon"}');
+INSERT INTO public.pecas VALUES (10, 'CORREIA-GATES-NMAX', '7896547893215', 'Correia de Transmissão CVT Gates Powerlink NMAX 160', 'Correia dentada de alta durabilidade e dissipação térmica para scooter.', 'Transmissão', 'https://http2.mlstatic.com/D_NQ_NP_2X_938589-MLU74021834718_012024-F.webp', '{"perfil": "CVT", "scooter": "NMAX 160", "material": "EPDM com cordonéis de aramida"}');
 
 
 --

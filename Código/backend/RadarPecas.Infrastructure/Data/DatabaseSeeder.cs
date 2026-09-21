@@ -58,7 +58,7 @@ public static class DatabaseSeeder
                         Nome = "Vela de Ignição NGK CPR8EA-9",
                         Categoria = "Ignição",
                         Descricao = "Vela de ignição padrão resistiva NGK para motores monocilíndricos.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=500",
+                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_876209-MLB108040626802_032026-O.webp",
                         Especificacoes = "{\"grau_termico\": \"8\", \"rosca\": \"10mm\", \"eletrodo\": \"Níquel\"}"
                     },
                     new()
@@ -68,7 +68,7 @@ public static class DatabaseSeeder
                         Nome = "Pastilha de Freio Dianteira Cobreq Street N-917",
                         Categoria = "Freios",
                         Descricao = "Pastilha orgânica para disco dianteiro, alta durabilidade e frenagem precisa.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500",
+                        FotoPecaUrl = "https://karhub-images.karhub.com.br/234957-pastilha-de-freio-dianteira-1726498351871.jpeg",
                         Especificacoes = "{\"posicao\": \"Dianteira\", \"material\": \"Orgânica\", \"linha\": \"Street\"}"
                     },
                     new()
@@ -78,7 +78,7 @@ public static class DatabaseSeeder
                         Nome = "Filtro de Óleo Fram CH6015",
                         Categoria = "Filtros",
                         Descricao = "Filtro de óleo de alta retenção de impurezas para proteção do motor.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=500",
+                        FotoPecaUrl = "https://fortnine.ca/media/catalog/product/cache/dd4850ad4231b6306bceadf38a0bbeed/catalogimages/fram/extra-guard-oil-filter-cartridge-ch6015.jpg",
                         Especificacoes = "{\"tipo\": \"Refil interno\", \"meio_filtrante\": \"Celulose microfibra\"}"
                     },
                     new()
@@ -88,7 +88,7 @@ public static class DatabaseSeeder
                         Nome = "Kit Relação Transmissão Vaz com Retentor Aço 1045",
                         Categoria = "Transmissão",
                         Descricao = "Kit completo de transmissão (coroa, pinhão e corrente com o-ring retentor).",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=500",
+                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_881930-MLU75562498498_042024-F.webp",
                         Especificacoes = "{\"coroa\": \"44D\", \"pinhao\": \"15D\", \"corrente\": \"428HO-118L com retentor\", \"aco\": \"1045\"}"
                     },
                     new()
@@ -98,7 +98,7 @@ public static class DatabaseSeeder
                         Nome = "Pneu Traseiro Pirelli City Dragon 90/90-18 57P TT",
                         Categoria = "Pneus",
                         Descricao = "Pneu para uso urbano com excelente rendimento quilométrico e aderência no molhado.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1578632767115-351597cf2477?w=500",
+                        FotoPecaUrl = "https://tyre-images.pirelli.com/MKTData/MOTO/files/2094/mototopimage/pirelli_moto_city_dragon_base_1_992x992.png",
                         Especificacoes = "{\"medida\": \"90/90-18\", \"posicao\": \"Traseiro\", \"indice_carga\": \"57 (230 kg)\", \"indice_vel\": \"P (150 km/h)\"}"
                     },
                     new()
@@ -108,7 +108,7 @@ public static class DatabaseSeeder
                         Nome = "Bateria Selada Heliar 12V 5Ah HTZ6L AGM",
                         Categoria = "Elétrica",
                         Descricao = "Bateria livre de manutenção com tecnologia AGM e alta corrente de partida.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=500",
+                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_871209-MLU72521367498_102023-F.webp",
                         Especificacoes = "{\"tensao\": \"12V\", \"capacidade\": \"5Ah\", \"cca\": \"50A\", \"tecnologia\": \"AGM / VRLA\"}"
                     },
                     new()
@@ -118,7 +118,7 @@ public static class DatabaseSeeder
                         Nome = "Óleo de Motor Mobil Super Moto 4T 10W-30 Semissintético 1L",
                         Categoria = "Lubrificantes",
                         Descricao = "Lubrificante semissintético de alta performance atendendo API SL e JASO MA2.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500",
+                        FotoPecaUrl = "https://cdn.awsli.com.br/600x450/877/877231/produto/221477213/mobil-4t-10w30-3egdm9prtu.png",
                         Especificacoes = "{\"viscosidade\": \"10W-30\", \"base\": \"Semissintético\", \"normas\": \"API SL / JASO MA2\", \"volume\": \"1 Litro\"}"
                     },
                     new()
@@ -128,7 +128,7 @@ public static class DatabaseSeeder
                         Nome = "Lâmpada de Farol H4 LED Philips Ultinon Moto 6000K",
                         Categoria = "Iluminação",
                         Descricao = "Lâmpada LED automotiva de feixe concentrado sem ofuscamento e luz branca pura.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1563720223185-11003d516935?w=500",
+                        FotoPecaUrl = "https://fortbras.vteximg.com.br/arquivos/ids/318302/lampada-philips-ultinon-led-moto-luz-branca-hs1-h4-12v-9w-6000k-farol-11458umx1-hipervarejo-1.jpg",
                         Especificacoes = "{\"encaixe\": \"H4\", \"temperatura_cor\": \"6000K\", \"potencia\": \"12W\", \"durabilidade\": \"1500h\"}"
                     },
                     new()
@@ -138,7 +138,7 @@ public static class DatabaseSeeder
                         Nome = "Cabo de Embreagem Reforçado Motobor CG 160",
                         Categoria = "Cabos & Comandos",
                         Descricao = "Cabo de embreagem com teflon interno de acionamento ultra macio e resistente.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500",
+                        FotoPecaUrl = "https://www.motokart.com.br/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/c/a/cabo_embreagem_titan_fan_start_160_1_2.jpg",
                         Especificacoes = "{\"revestimento\": \"Teflon\", \"comprimento\": \"105cm\", \"garantia\": \"6 meses\"}"
                     },
                     new()
@@ -148,7 +148,7 @@ public static class DatabaseSeeder
                         Nome = "Correia de Transmissão CVT Gates Powerlink NMAX 160",
                         Categoria = "Transmissão",
                         Descricao = "Correia dentada de alta durabilidade e dissipação térmica para scooter.",
-                        FotoPecaUrl = "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=500",
+                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_938589-MLU74021834718_012024-F.webp",
                         Especificacoes = "{\"material\": \"EPDM com cordonéis de aramida\", \"perfil\": \"CVT\", \"scooter\": \"NMAX 160\"}"
                     }
                 };
@@ -296,8 +296,8 @@ public static class DatabaseSeeder
                     TelefoneContato = "(79) 99988-7766",
                     EmailContato = "contato@radarmotosaracaju.com.br",
                     HorariosFuncionamento = "{\"seg_sex\": \"08:00 - 18:00\", \"sab\": \"08:00 - 13:00\"}",
-                    FotoPerfilUrl = "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=500",
-                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800" },
+                    FotoPerfilUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
+                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     Ativa = true
                 };
 
@@ -313,8 +313,8 @@ public static class DatabaseSeeder
                     TelefoneContato = "(79) 98877-6655",
                     EmailContato = "vendas@motopower.com.br",
                     HorariosFuncionamento = "{\"seg_sex\": \"07:30 - 18:00\", \"sab\": \"08:00 - 12:00\"}",
-                    FotoPerfilUrl = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500",
-                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800" },
+                    FotoPerfilUrl = "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600",
+                    GaleriaFotosUrls = new[] { "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600" },
                     Ativa = true
                 };
 
@@ -333,7 +333,7 @@ public static class DatabaseSeeder
                         ModeloMotoId = modeloCg.Id,
                         AnoFabricacao = 2022,
                         Apelido = "Titan 160 do Dia a Dia",
-                        FotoMotoUrl = "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=500"
+                        FotoMotoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Honda_CG_150_Titan.jpg/800px-Honda_CG_150_Titan.jpg"
                     });
                 }
 
@@ -345,7 +345,7 @@ public static class DatabaseSeeder
                         ModeloMotoId = modeloFz.Id,
                         AnoFabricacao = 2023,
                         Apelido = "Fazer 250 de Viagem",
-                        FotoMotoUrl = "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=500"
+                        FotoMotoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/YAMAHA_FZ-S.jpg/800px-YAMAHA_FZ-S.jpg"
                     });
                 }
                 await context.SaveChangesAsync();

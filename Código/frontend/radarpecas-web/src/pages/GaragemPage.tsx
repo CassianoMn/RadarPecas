@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
@@ -7,6 +7,10 @@ import { Button, EmptyState, ErrorState, Loading, TrashIcon, EditIcon } from '..
 
 export function GaragemPage() {
   const { activeMoto, setActiveMoto } = useActiveMoto();
+  const activeMotoRef = useRef(activeMoto);
+  useEffect(() => {
+    activeMotoRef.current = activeMoto;
+  }, [activeMoto]);
 
   const [motos, setMotos] = useState<GaragemItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +37,10 @@ export function GaragemPage() {
     try {
       const data = await api<GaragemItem[]>('/garagem');
       setMotos(data ?? []);
+      const currentActive = activeMotoRef.current;
       if (data && data.length > 0) {
-        if (!activeMoto) {
+        const belongsToUser = currentActive?.id && data.some((m) => m.id === currentActive.id);
+        if (!currentActive || !belongsToUser) {
           const first = data[0];
           setActiveMoto({
             id: first.id,
@@ -46,13 +52,17 @@ export function GaragemPage() {
             fotoMotoUrl: first.fotoMotoUrl,
           });
         }
+      } else {
+        if (currentActive) {
+          setActiveMoto(null);
+        }
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao carregar motos da garagem.');
     } finally {
       setLoading(false);
     }
-  }, [activeMoto, setActiveMoto]);
+  }, [setActiveMoto]);
 
   useEffect(() => {
     carregarGaragem();
@@ -105,7 +115,8 @@ export function GaragemPage() {
     if (!window.confirm('Tem certeza que deseja remover esta moto da sua garagem?')) return;
     try {
       await api(`/garagem/${id}`, { method: 'DELETE' });
-      if (activeMoto?.id === id) {
+      if (activeMotoRef.current?.id === id) {
+        activeMotoRef.current = null;
         setActiveMoto(null);
       }
       await carregarGaragem();
