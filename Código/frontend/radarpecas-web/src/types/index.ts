@@ -157,6 +157,11 @@ export interface LocalizacaoSugestao {
   displayName: string;
   titulo: string;
   subtitulo?: string | null;
+  rua?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  pais?: string | null;
+  nomeFormatadoPadrao?: string | null;
   latitude: number;
   longitude: number;
   tipo?: string | null;

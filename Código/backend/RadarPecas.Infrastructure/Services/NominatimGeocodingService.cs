@@ -140,22 +140,61 @@ public class NominatimGeocodingService : INominatimGeocodingService
                     var state = props.TryGetProperty("state", out var s) ? s.GetString() : null;
                     var country = props.TryGetProperty("country", out var cntry) ? cntry.GetString() : null;
                     var street = props.TryGetProperty("street", out var st) ? st.GetString() : null;
+                    var district = props.TryGetProperty("district", out var d) ? d.GetString() : null;
                     var type = props.TryGetProperty("type", out var t) ? t.GetString() : null;
 
-                    string titulo = name ?? street ?? city ?? state ?? "Localização";
+                    string? rua = !string.IsNullOrWhiteSpace(street) ? street.Trim() : null;
+                    if (string.IsNullOrWhiteSpace(rua) && !string.IsNullOrWhiteSpace(name) && EhPrefixoLogradouro(name))
+                    {
+                        rua = name.Trim();
+                    }
+
+                    string? cidade = !string.IsNullOrWhiteSpace(city) ? city.Trim() :
+                                     (!string.IsNullOrWhiteSpace(district) ? district.Trim() : null);
+                    if (string.IsNullOrWhiteSpace(cidade) && (type == "city" || type == "district"))
+                    {
+                        cidade = name?.Trim();
+                    }
+
+                    string? estado = !string.IsNullOrWhiteSpace(state) ? state.Trim() : null;
+
+                    string titulo;
+                    if (!string.IsNullOrWhiteSpace(rua))
+                    {
+                        titulo = rua;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(name))
+                    {
+                        titulo = name.Trim();
+                    }
+                    else if (!string.IsNullOrWhiteSpace(cidade))
+                    {
+                        titulo = cidade;
+                    }
+                    else
+                    {
+                        titulo = estado ?? "Localização";
+                    }
+
                     var parts = new List<string>();
-                    if (!string.IsNullOrWhiteSpace(city) && city != titulo) parts.Add(city);
-                    if (!string.IsNullOrWhiteSpace(state) && state != titulo) parts.Add(state);
+                    if (!string.IsNullOrWhiteSpace(cidade) && cidade != titulo) parts.Add(cidade);
+                    if (!string.IsNullOrWhiteSpace(estado) && estado != titulo) parts.Add(estado);
                     if (!string.IsNullOrWhiteSpace(country) && country != titulo) parts.Add(country);
 
                     string subtitulo = string.Join(", ", parts);
                     string displayName = string.IsNullOrWhiteSpace(subtitulo) ? titulo : $"{titulo}, {subtitulo}";
+                    string nomeFormatadoPadrao = FormatarNomePadrao(rua, cidade, estado, titulo);
 
                     sugestoes.Add(new LocalizacaoSugestaoResponse
                     {
                         DisplayName = displayName,
                         Titulo = titulo,
                         Subtitulo = string.IsNullOrWhiteSpace(subtitulo) ? null : subtitulo,
+                        Rua = rua,
+                        Cidade = cidade,
+                        Estado = estado,
+                        Pais = country,
+                        NomeFormatadoPadrao = nomeFormatadoPadrao,
                         Latitude = lat,
                         Longitude = lon,
                         Tipo = type
@@ -209,8 +248,10 @@ public class NominatimGeocodingService : INominatimGeocodingService
                     var name = item.TryGetProperty("name", out var nProp) ? nProp.GetString() : null;
                     var type = item.TryGetProperty("type", out var tProp) ? tProp.GetString() : null;
 
-                    string titulo = name ?? string.Empty;
-                    string subtitulo = string.Empty;
+                    string? rua = null;
+                    string? cidade = null;
+                    string? estado = null;
+                    string? country = null;
 
                     if (item.TryGetProperty("address", out var addrProp) && addrProp.ValueKind == JsonValueKind.Object)
                     {
@@ -220,37 +261,54 @@ public class NominatimGeocodingService : INominatimGeocodingService
                                    addrProp.TryGetProperty("town", out var tw) ? tw.GetString() :
                                    addrProp.TryGetProperty("municipality", out var m) ? m.GetString() : null;
                         var state = addrProp.TryGetProperty("state", out var st) ? st.GetString() : null;
+                        var cntry = addrProp.TryGetProperty("country", out var cy) ? cy.GetString() : null;
 
-                        if (string.IsNullOrWhiteSpace(titulo))
+                        rua = !string.IsNullOrWhiteSpace(road) ? road.Trim() : null;
+                        if (string.IsNullOrWhiteSpace(rua) && !string.IsNullOrWhiteSpace(name) && EhPrefixoLogradouro(name))
                         {
-                            titulo = road ?? suburb ?? city ?? state ?? displayName.Split(',')[0].Trim();
+                            rua = name.Trim();
                         }
 
-                        var parts = new List<string>();
-                        if (!string.IsNullOrWhiteSpace(suburb) && suburb != titulo) parts.Add(suburb);
-                        if (!string.IsNullOrWhiteSpace(city) && city != titulo) parts.Add(city);
-                        if (!string.IsNullOrWhiteSpace(state) && state != titulo) parts.Add(state);
+                        cidade = !string.IsNullOrWhiteSpace(city) ? city.Trim() :
+                                 (!string.IsNullOrWhiteSpace(suburb) ? suburb.Trim() : null);
+                        if (string.IsNullOrWhiteSpace(cidade) && type == "city")
+                        {
+                            cidade = name?.Trim();
+                        }
 
-                        subtitulo = parts.Count > 0 ? string.Join(", ", parts) : displayName;
+                        estado = !string.IsNullOrWhiteSpace(state) ? state.Trim() : null;
+                        country = !string.IsNullOrWhiteSpace(cntry) ? cntry.Trim() : null;
                     }
                     else
                     {
-                        var split = displayName.Split(',');
-                        if (string.IsNullOrWhiteSpace(titulo))
+                        if (!string.IsNullOrWhiteSpace(name) && EhPrefixoLogradouro(name))
                         {
-                            titulo = split[0].Trim();
-                        }
-                        if (split.Length > 1)
-                        {
-                            subtitulo = string.Join(", ", split.Skip(1).Take(3)).Trim();
+                            rua = name.Trim();
                         }
                     }
+
+                    string titulo = !string.IsNullOrWhiteSpace(rua) ? rua :
+                                    (!string.IsNullOrWhiteSpace(name) ? name.Trim() :
+                                    (cidade ?? estado ?? displayName.Split(',')[0].Trim()));
+
+                    var parts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(cidade) && cidade != titulo) parts.Add(cidade);
+                    if (!string.IsNullOrWhiteSpace(estado) && estado != titulo) parts.Add(estado);
+                    if (!string.IsNullOrWhiteSpace(country) && country != titulo) parts.Add(country);
+
+                    string subtitulo = parts.Count > 0 ? string.Join(", ", parts) : displayName;
+                    string nomeFormatadoPadrao = FormatarNomePadrao(rua, cidade, estado, titulo);
 
                     sugestoes.Add(new LocalizacaoSugestaoResponse
                     {
                         DisplayName = displayName,
                         Titulo = titulo,
                         Subtitulo = string.IsNullOrWhiteSpace(subtitulo) ? null : subtitulo,
+                        Rua = rua,
+                        Cidade = cidade,
+                        Estado = estado,
+                        Pais = country,
+                        NomeFormatadoPadrao = nomeFormatadoPadrao,
                         Latitude = lat,
                         Longitude = lon,
                         Tipo = type
@@ -267,5 +325,92 @@ public class NominatimGeocodingService : INominatimGeocodingService
         }
 
         return sugestoes;
+    }
+
+    private static readonly Dictionary<string, string> EstadosUf = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Acre"] = "AC",
+        ["Alagoas"] = "AL",
+        ["Amapá"] = "AP",
+        ["Amapa"] = "AP",
+        ["Amazonas"] = "AM",
+        ["Bahia"] = "BA",
+        ["Ceará"] = "CE",
+        ["Ceara"] = "CE",
+        ["Distrito Federal"] = "DF",
+        ["Espírito Santo"] = "ES",
+        ["Espirito Santo"] = "ES",
+        ["Goiás"] = "GO",
+        ["Goias"] = "GO",
+        ["Maranhão"] = "MA",
+        ["Maranhao"] = "MA",
+        ["Mato Grosso"] = "MT",
+        ["Mato Grosso do Sul"] = "MS",
+        ["Minas Gerais"] = "MG",
+        ["Pará"] = "PA",
+        ["Para"] = "PA",
+        ["Paraíba"] = "PB",
+        ["Paraiba"] = "PB",
+        ["Paraná"] = "PR",
+        ["Parana"] = "PR",
+        ["Pernambuco"] = "PE",
+        ["Piauí"] = "PI",
+        ["Piaui"] = "PI",
+        ["Rio de Janeiro"] = "RJ",
+        ["Rio Grande do Norte"] = "RN",
+        ["Rio Grande do Sul"] = "RS",
+        ["Rondônia"] = "RO",
+        ["Rondonia"] = "RO",
+        ["Roraima"] = "RR",
+        ["Santa Catarina"] = "SC",
+        ["São Paulo"] = "SP",
+        ["Sao Paulo"] = "SP",
+        ["Sergipe"] = "SE",
+        ["Tocantins"] = "TO"
+    };
+
+    private static string? ObterUfOuEstado(string? estado)
+    {
+        if (string.IsNullOrWhiteSpace(estado)) return null;
+        var trimmed = estado.Trim();
+        if (trimmed.Length == 2) return trimmed.ToUpperInvariant();
+        if (EstadosUf.TryGetValue(trimmed, out var uf)) return uf;
+        return trimmed;
+    }
+
+    private static string FormatarNomePadrao(string? rua, string? cidade, string? estado, string? tituloFallback)
+    {
+        var ufOuEstado = ObterUfOuEstado(estado);
+
+        if (!string.IsNullOrWhiteSpace(rua))
+        {
+            var parts = new List<string> { rua.Trim() };
+            if (!string.IsNullOrWhiteSpace(cidade)) parts.Add(cidade.Trim());
+            if (!string.IsNullOrWhiteSpace(ufOuEstado) && ufOuEstado != cidade) parts.Add(ufOuEstado);
+            return string.Join(", ", parts);
+        }
+
+        var local = !string.IsNullOrWhiteSpace(cidade) ? cidade.Trim() : tituloFallback?.Trim();
+        if (!string.IsNullOrWhiteSpace(local))
+        {
+            if (!string.IsNullOrWhiteSpace(ufOuEstado) && ufOuEstado != local)
+            {
+                return $"{local}, {ufOuEstado}";
+            }
+            return local;
+        }
+
+        return tituloFallback ?? "Localização selecionada";
+    }
+
+    private static bool EhPrefixoLogradouro(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return false;
+        var t = texto.Trim().ToLowerInvariant();
+        return t.StartsWith("rua") || t.StartsWith("avenida") || t.StartsWith("av.") ||
+               t.StartsWith("rodovia") || t.StartsWith("rod.") || t.StartsWith("alameda") ||
+               t.StartsWith("al.") || t.StartsWith("travessa") || t.StartsWith("tv.") ||
+               t.StartsWith("estrada") || t.StartsWith("est.") || t.StartsWith("praça") ||
+               t.StartsWith("praca") || t.StartsWith("via") || t.StartsWith("viela");
     }
 }

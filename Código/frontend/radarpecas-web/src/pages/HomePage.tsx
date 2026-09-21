@@ -18,6 +18,7 @@ export function HomePage() {
 
   // Busca de Localização no Mapa (Geocoding & Autocomplete)
   const [locationQuery, setLocationQuery] = useState('');
+  const [selectedLocationName, setSelectedLocationName] = useState<string | null>(null);
   const [sugestoes, setSugestoes] = useState<LocalizacaoSugestao[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -286,9 +287,63 @@ export function HomePage() {
     }
   };
 
+  const formatLocationStandardName = (loc: LocalizacaoSugestao): string => {
+    if (loc.nomeFormatadoPadrao) {
+      return loc.nomeFormatadoPadrao;
+    }
+
+    const streetPrefixes = [
+      'rua', 'avenida', 'av.', 'rodovia', 'rod.', 'alameda', 'al.',
+      'travessa', 'tv.', 'estrada', 'est.', 'praça', 'praca', 'via', 'viela'
+    ];
+
+    let rua = loc.rua?.trim();
+    const titulo = loc.titulo?.trim();
+    if (!rua && titulo) {
+      const lower = titulo.toLowerCase();
+      if (streetPrefixes.some((p) => lower.startsWith(p))) {
+        rua = titulo;
+      }
+    }
+
+    const cidade = loc.cidade?.trim();
+    const estado = loc.estado?.trim();
+
+    if (rua) {
+      const parts = [rua];
+      if (cidade) parts.push(cidade);
+      if (estado && estado !== cidade) parts.push(estado);
+      return parts.join(', ');
+    }
+
+    const local = cidade || titulo || '';
+    if (local) {
+      if (estado && estado !== local) {
+        return `${local}, ${estado}`;
+      }
+      return local;
+    }
+
+    return loc.displayName || 'Localização selecionada';
+  };
+
+  const handleClearSelectedLocation = () => {
+    justSelectedRef.current = false;
+    setSelectedLocationName(null);
+    setLocationQuery('');
+    setSugestoes([]);
+    setShowSuggestions(false);
+    if (searchLocationMarkerRef.current) {
+      searchLocationMarkerRef.current.remove();
+      searchLocationMarkerRef.current = null;
+    }
+  };
+
   const handleSelectLocation = async (loc: LocalizacaoSugestao) => {
     justSelectedRef.current = true;
-    setLocationQuery(loc.titulo || loc.displayName);
+    const placeName = formatLocationStandardName(loc);
+    setSelectedLocationName(placeName);
+    setLocationQuery(placeName);
     setShowSuggestions(false);
     setSugestoes([]);
     setHighlightedIndex(-1);
@@ -297,25 +352,28 @@ export function HomePage() {
     const lon = Number(loc.longitude);
 
     if (mapRef.current) {
-      mapRef.current.flyTo([lat, lon], 14, { duration: 1.5 });
+      mapRef.current.flyTo([lat, lon], 15, { duration: 1.5 });
 
-      // Atualizar ou criar marcador da localização buscada
+      // Atualizar ou criar marcador da localização buscada: SÓ O PIN NO LUGAR ESCOLHIDO (sem nome ao lado)
+      const searchPinIcon = L.divIcon({
+        className: 'leaflet-custom-marker-search-pin',
+        html: `
+          <div class="map-search-pin-wrapper">
+            <svg width="28" height="38" viewBox="0 0 28 38" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));">
+              <path d="M14 0C6.27 0 0 6.27 0 14C0 24.5 14 38 14 38C14 38 28 24.5 28 14C28 6.27 21.73 0 14 0Z" fill="#006375"/>
+              <circle cx="14" cy="13" r="5.5" fill="#ffffff"/>
+              <circle cx="14" cy="13" r="2.5" fill="#006375"/>
+            </svg>
+          </div>
+        `,
+        iconSize: [28, 38],
+        iconAnchor: [14, 38],
+      });
+
       if (!searchLocationMarkerRef.current) {
-        const searchPinIcon = L.divIcon({
-          className: 'leaflet-custom-marker-search',
-          html: `
-            <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-              <div style="background: #006375; color: #ffffff; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.25); margin-bottom: 4px; white-space: nowrap;">
-                📍 ${loc.titulo}
-              </div>
-              <div style="width: 20px; height: 20px; border-radius: 50%; background: #006375; border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.35);"></div>
-            </div>
-          `,
-          iconSize: [140, 50],
-          iconAnchor: [70, 50],
-        });
         searchLocationMarkerRef.current = L.marker([lat, lon], { icon: searchPinIcon }).addTo(mapRef.current);
       } else {
+        searchLocationMarkerRef.current.setIcon(searchPinIcon);
         searchLocationMarkerRef.current.setLatLng([lat, lon]);
       }
     }
@@ -525,6 +583,28 @@ export function HomePage() {
 
       {/* PAINEL DIREITO: MAPA INTERATIVO OPENSTREETMAP */}
       <div className="explore-map-wrapper">
+        {/* Nome do lugar buscado no canto superior esquerdo do quadrante de mapa */}
+        {selectedLocationName && (
+          <div className="map-selected-location-badge" role="status" aria-label="Localização selecionada no mapa">
+            <span className="map-badge-icon">📍</span>
+            <div className="map-badge-content">
+              <span className="map-badge-label">Localização</span>
+              <span className="map-badge-title" title={selectedLocationName}>
+                {selectedLocationName}
+              </span>
+            </div>
+            <button
+              type="button"
+              className="map-badge-close"
+              onClick={handleClearSelectedLocation}
+              title="Remover localização"
+              aria-label="Remover localização"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Barra flutuante de busca de localização sobre o mapa com autocomplete */}
         <div className="map-floating-search-wrapper">
           <div className="map-floating-search">
@@ -536,7 +616,15 @@ export function HomePage() {
               value={locationQuery}
               onChange={(e) => {
                 justSelectedRef.current = false;
-                setLocationQuery(e.target.value);
+                const val = e.target.value;
+                setLocationQuery(val);
+                if (!val) {
+                  setSelectedLocationName(null);
+                  if (searchLocationMarkerRef.current) {
+                    searchLocationMarkerRef.current.remove();
+                    searchLocationMarkerRef.current = null;
+                  }
+                }
                 setShowSuggestions(true);
               }}
               onFocus={() => {
@@ -552,16 +640,7 @@ export function HomePage() {
             {locationQuery && (
               <button
                 type="button"
-                onClick={() => {
-                  justSelectedRef.current = false;
-                  setLocationQuery('');
-                  setSugestoes([]);
-                  setShowSuggestions(false);
-                  if (searchLocationMarkerRef.current) {
-                    searchLocationMarkerRef.current.remove();
-                    searchLocationMarkerRef.current = null;
-                  }
-                }}
+                onClick={handleClearSelectedLocation}
                 style={{
                   background: 'none',
                   border: 'none',
