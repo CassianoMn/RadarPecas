@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,10 @@ using RadarPecas.Application.Interfaces;
 using RadarPecas.Application.Services;
 using RadarPecas.Infrastructure.Data;
 using RadarPecas.Infrastructure.Services;
+
+// Garantir consistência na interpretação de números decimais (ponto flutuante) em query strings
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { formatHorariosFuncionamento } from '../lib/formatters';
 import type { Loja, LocalizacaoSugestao } from '../types';
 import { EmptyState, FilterIcon, Loading, MicIcon, SearchIcon, StarIcon } from '../components/ui';
+import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -56,17 +57,25 @@ export function HomePage() {
 
   // Carregar lojas reais da API (passando geolocalização inicial quando disponível)
   useEffect(() => {
+    const storedCoords = getStoredUserCoords();
+    if (storedCoords) {
+      carregarLojasPorCoordenadas(storedCoords.lat, storedCoords.lng);
+    }
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          setStoredUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           carregarLojasPorCoordenadas(pos.coords.latitude, pos.coords.longitude);
         },
         () => {
-          carregarLojasPorCoordenadas();
+          if (!storedCoords) {
+            carregarLojasPorCoordenadas();
+          }
         },
         { timeout: 5000 }
       );
-    } else {
+    } else if (!storedCoords) {
       carregarLojasPorCoordenadas();
     }
   }, [carregarLojasPorCoordenadas]);
@@ -215,8 +224,10 @@ export function HomePage() {
     navigator.geolocation.getCurrentPosition((pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
+      setStoredUserCoords({ lat, lng });
       if (userMarkerRef.current) userMarkerRef.current.setLatLng([lat, lng]);
       mapRef.current?.flyTo([lat, lng], 15, { duration: 1.2 });
+      carregarLojasPorCoordenadas(lat, lng);
     });
   }
 
@@ -350,6 +361,7 @@ export function HomePage() {
 
     const lat = Number(loc.latitude);
     const lon = Number(loc.longitude);
+    setStoredUserCoords({ lat, lng: lon, nome: placeName });
 
     if (mapRef.current) {
       mapRef.current.flyTo([lat, lon], 15, { duration: 1.5 });
