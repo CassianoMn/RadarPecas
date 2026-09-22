@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Loja } from '../types';
 import { EmptyState, FilterIcon, Loading, StarIcon } from '../components/ui';
+import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 export function LojasPage() {
   const [lojas, setLojas] = useState<Loja[]>([]);
@@ -11,42 +12,42 @@ export function LojasPage() {
 
   const carregarLojas = useCallback(async () => {
     setLoading(true);
-    try {
+    const stored = getStoredUserCoords();
+    const fetchWithCoords = async (lat?: number, lon?: number) => {
       const query = new URLSearchParams();
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            query.set('userLat', pos.coords.latitude.toString());
-            query.set('userLon', pos.coords.longitude.toString());
-            try {
-              const data = await api<Loja[]>(`/lojas?${query.toString()}`);
-              setLojas(data ?? []);
-            } catch {
-              setLojas([]);
-            } finally {
-              setLoading(false);
-            }
-          },
-          async () => {
-            try {
-              const data = await api<Loja[]>('/lojas');
-              setLojas(data ?? []);
-            } catch {
-              setLojas([]);
-            } finally {
-              setLoading(false);
-            }
-          },
-          { timeout: 5000 }
-        );
-      } else {
-        const data = await api<Loja[]>('/lojas');
+      if (lat != null && lon != null) {
+        query.set('userLat', lat.toString());
+        query.set('userLon', lon.toString());
+      }
+      try {
+        const data = await api<Loja[]>(query.toString() ? `/lojas?${query.toString()}` : '/lojas');
         setLojas(data ?? []);
+      } catch {
+        setLojas([]);
+      } finally {
         setLoading(false);
       }
-    } catch {
-      setLojas([]);
-      setLoading(false);
+    };
+
+    if (stored) {
+      await fetchWithCoords(stored.lat, stored.lng);
+    }
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          setStoredUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          await fetchWithCoords(pos.coords.latitude, pos.coords.longitude);
+        },
+        async () => {
+          if (!stored) {
+            await fetchWithCoords();
+          }
+        },
+        { timeout: 5000 }
+      );
+    } else if (!stored) {
+      await fetchWithCoords();
     }
   }, []);
 

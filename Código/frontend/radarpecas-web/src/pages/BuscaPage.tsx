@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { BuscaResultado } from '../types';
-import { CheckIcon, EmptyState, ErrorState, Loading } from '../components/ui';
+import { CheckIcon, ErrorState, Loading } from '../components/ui';
+import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 export function BuscaPage() {
   const [searchParams] = useSearchParams();
@@ -11,13 +12,19 @@ export function BuscaPage() {
 
   // Filtros
   const termo = searchParams.get('termo') || '';
+  const apenasPromocoesParam = searchParams.get('apenasPromocoes') === 'true';
+  const [apenasPromocoes, setApenasPromocoes] = useState(apenasPromocoesParam);
   const [categoria, setCategoria] = useState(searchParams.get('categoria') || '');
   const [selectedMarcas, setSelectedMarcas] = useState<string[]>([]);
   const [precoMaximo, setPrecoMaximo] = useState<number>(1500);
   const [distanciaPill, setDistanciaPill] = useState<'5km' | '15km' | '+15km'>('15km');
   const [ordenacao, setOrdenacao] = useState(searchParams.get('ordenacao') || 'menor_distancia');
   const [page, setPage] = useState(1);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(() => {
+    const stored = getStoredUserCoords();
+    return stored ? { lat: stored.lat, lng: stored.lng } : null;
+  });
+  const [solicitandoLocalizacao, setSolicitandoLocalizacao] = useState(false);
 
   const [categorias, setCategorias] = useState<string[]>([]);
   const [resultado, setResultado] = useState<BuscaResultado | null>(null);
@@ -26,20 +33,33 @@ export function BuscaPage() {
 
   const marcasDisponiveis = ['Vaz', 'Cobreq', 'Fram', 'Pirelli', 'Heliar', 'Mobil', 'Philips', 'DID', 'KMC'];
 
-  // Obter localização do usuário para cálculo de distância
+  // Sincronizar apenasPromocoes quando mudar nos searchParams
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        () => {
-          // Permissão não concedida ou indisponível
-        },
-        { timeout: 5000 }
-      );
-    }
+    const isPromo = searchParams.get('apenasPromocoes') === 'true';
+    setApenasPromocoes(isPromo);
+  }, [searchParams]);
+
+  // Obter localização do usuário para cálculo de distância
+  const obterLocalizacaoNavegador = useCallback(() => {
+    if (!navigator.geolocation) return;
+    setSolicitandoLocalizacao(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserCoords(coords);
+        setStoredUserCoords(coords);
+        setSolicitandoLocalizacao(false);
+      },
+      () => {
+        setSolicitandoLocalizacao(false);
+      },
+      { timeout: 7000 }
+    );
   }, []);
+
+  useEffect(() => {
+    obterLocalizacaoNavegador();
+  }, [obterLocalizacaoNavegador]);
 
   // Carregar categorias
   useEffect(() => {
@@ -63,6 +83,10 @@ export function BuscaPage() {
     if (activeMoto) {
       params.set('modeloMotoId', activeMoto.modeloMotoId.toString());
       params.set('anoFabricacao', activeMoto.anoFabricacao.toString());
+    }
+
+    if (apenasPromocoes) {
+      params.set('apenasPromocoes', 'true');
     }
 
     // Coordenadas para cálculo de distância e raio
@@ -94,7 +118,7 @@ export function BuscaPage() {
     } finally {
       setLoading(false);
     }
-  }, [termo, categoria, activeMoto, distanciaPill, ordenacao, page, selectedMarcas, precoMaximo, userCoords]);
+  }, [termo, categoria, activeMoto, apenasPromocoes, distanciaPill, ordenacao, page, selectedMarcas, precoMaximo, userCoords]);
 
   useEffect(() => {
     executarBusca();
@@ -114,6 +138,7 @@ export function BuscaPage() {
     setSelectedMarcas([]);
     setPrecoMaximo(1500);
     setDistanciaPill('15km');
+    setApenasPromocoes(false);
     setPage(1);
   }
 
@@ -126,6 +151,35 @@ export function BuscaPage() {
       {/* BARRA LATERAL DE FILTROS */}
       <aside className="search-sidebar">
         <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Filtros</h2>
+
+        {/* Promoções / Ofertas Especiais */}
+        <div style={{ background: '#f8fafc', padding: 12, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+          <label className="field-label-mono" style={{ display: 'block', marginBottom: 6 }}>
+            Ofertas Especiais
+          </label>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              fontSize: '0.88rem',
+              color: '#0f172a',
+              fontWeight: 600,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={apenasPromocoes}
+              onChange={(e) => {
+                setApenasPromocoes(e.target.checked);
+                setPage(1);
+              }}
+              style={{ accentColor: '#006375', width: 16, height: 16 }}
+            />
+            🔥 Apenas Promoções
+          </label>
+        </div>
 
         {/* Categoria */}
         <div>
@@ -207,9 +261,34 @@ export function BuscaPage() {
 
         {/* Distância em Pílulas */}
         <div>
-          <label className="field-label-mono" style={{ display: 'block', marginBottom: 6 }}>
-            Distância
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <label className="field-label-mono" style={{ margin: 0 }}>
+              Distância
+            </label>
+            {userCoords ? (
+              <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 700 }}>
+                📍 GPS Ativo
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={obterLocalizacaoNavegador}
+                disabled={solicitandoLocalizacao}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#006375',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline',
+                }}
+              >
+                {solicitandoLocalizacao ? 'Obtendo...' : '📍 Ativar GPS'}
+              </button>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: 6 }}>
             {(['5km', '15km', '+15km'] as const).map((dist) => (
               <button
@@ -237,6 +316,11 @@ export function BuscaPage() {
               </button>
             ))}
           </div>
+          {!userCoords && (
+            <p style={{ margin: '6px 0 0', fontSize: '0.74rem', color: '#64748b', lineHeight: 1.3 }}>
+              Ative a localização para filtrar com precisão pelo raio selecionado.
+            </p>
+          )}
         </div>
 
         {/* Botão Limpar Filtros */}
@@ -304,11 +388,38 @@ export function BuscaPage() {
           }}
         >
           <div>
-            <h1 style={{ fontSize: '1.6rem', marginBottom: 2 }}>
-              {termo ? `Resultados para "${termo}"` : 'Explorar Ofertas'}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <h1 style={{ fontSize: '1.6rem', margin: 0 }}>
+                {apenasPromocoes
+                  ? termo
+                    ? `Promoções para "${termo}"`
+                    : 'Ofertas & Peças em Promoção'
+                  : termo
+                  ? `Resultados para "${termo}"`
+                  : 'Explorar Ofertas'}
+              </h1>
+              {apenasPromocoes && (
+                <span
+                  style={{
+                    background: '#fee2e2',
+                    color: '#b91c1c',
+                    padding: '2px 8px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    fontFamily: 'var(--mono)',
+                  }}
+                >
+                  🔥 Promoções
+                </span>
+              )}
+            </div>
             <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
-              {resultado ? `${resultado.ofertas.totalCount} peças encontradas num raio de ${distanciaPill}` : 'Buscando peças...'}
+              {resultado
+                ? userCoords
+                  ? `${resultado.ofertas.totalCount} ${resultado.ofertas.totalCount === 1 ? 'peça encontrada' : 'peças encontradas'} num raio de ${distanciaPill}`
+                  : `${resultado.ofertas.totalCount} ${resultado.ofertas.totalCount === 1 ? 'peça encontrada' : 'peças encontradas'} (localização não informada)`
+                : 'Buscando peças...'}
             </p>
           </div>
 
@@ -335,7 +446,67 @@ export function BuscaPage() {
         {!loading && !error && resultado && (
           <>
             {resultado.ofertas.items.length === 0 ? (
-              <EmptyState text="Nenhuma peça encontrada com os filtros selecionados." />
+              <div
+                style={{
+                  textAlign: 'center',
+                  padding: '48px 24px',
+                  background: '#ffffff',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border)',
+                }}
+              >
+                <div style={{ fontSize: '3rem', marginBottom: 12 }}>🔍</div>
+                <h3 style={{ fontSize: '1.15rem', color: '#0f172a', marginBottom: 8 }}>
+                  Nenhuma peça encontrada com os filtros selecionados
+                </h3>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: 480, margin: '0 auto 20px', lineHeight: 1.5 }}>
+                  {distanciaPill !== '+15km' && userCoords ? (
+                    <>
+                      Não encontramos peças no raio de <strong>{distanciaPill}</strong> da sua localização. As lojas credenciadas podem estar além dessa distância.
+                    </>
+                  ) : apenasPromocoes ? (
+                    'Não há produtos em promoção com os critérios atuais. Tente desmarcar o filtro de promoções ou alterar as marcas.'
+                  ) : (
+                    'Tente relaxar os filtros de marca, preço ou categoria para encontrar mais opções.'
+                  )}
+                </p>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {distanciaPill !== '+15km' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDistanciaPill('+15km');
+                        setPage(1);
+                      }}
+                      className="btn btn-primary"
+                      style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                    >
+                      Ampliar raio para +15km (até 50km)
+                    </button>
+                  )}
+                  {apenasPromocoes && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApenasPromocoes(false);
+                        setPage(1);
+                      }}
+                      className="btn btn-outline"
+                      style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                    >
+                      Ver todas as peças (sem filtro de promoção)
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLimparFiltros}
+                    className="btn btn-outline"
+                    style={{ padding: '8px 18px', fontSize: '0.82rem' }}
+                  >
+                    Limpar todos os filtros
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="search-results-grid">
                 {resultado.ofertas.items.map((item) => {
