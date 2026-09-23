@@ -148,6 +148,19 @@ export function Layout() {
                   >
                     Minha Garagem
                   </Link>
+                  <Link
+                    to="/perfil"
+                    style={{
+                      display: 'block',
+                      padding: '8px 16px',
+                      color: 'var(--text)',
+                      fontSize: '0.85rem',
+                      textDecoration: 'none',
+                    }}
+                    onClick={() => setShowUserDropdown(false)}
+                  >
+                    Gerenciar Conta
+                  </Link>
                   <button
                     type="button"
                     onClick={handleLogout}

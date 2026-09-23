@@ -14,6 +14,7 @@ import { LojasPage } from './pages/LojasPage';
 import { LojaDetalhesPage } from './pages/LojaDetalhesPage';
 import { AvaliarLojaPage } from './pages/AvaliarLojaPage';
 import { OfertaDetalhesPage } from './pages/OfertaDetalhesPage';
+import { PerfilPage } from './pages/PerfilPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -51,6 +52,14 @@ export default function App() {
                   element={
                     <RequireAuth>
                       <AvaliarLojaPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="perfil"
+                  element={
+                    <RequireAuth>
+                      <PerfilPage />
                     </RequireAuth>
                   }
                 />
