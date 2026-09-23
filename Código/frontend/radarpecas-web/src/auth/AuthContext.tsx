@@ -8,6 +8,7 @@ export interface User {
   nome: string;
   email: string;
   tipoUsuario: string;
+  dataCadastro?: string;
   lojaId?: string | null;
   nomeLoja?: string | null;
 }
@@ -83,14 +84,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!getToken()) return;
+    try {
+      const me = await api<User>('/auth/me');
+      setUser(me);
+    } catch {
+      // noop
+    }
+  }, []);
+
+  const updateProfile = useCallback(
+    async (input: { nome: string; email?: string; senhaAtual?: string; novaSenha?: string }) => {
+      const updated = await api<User>('/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      });
+      if (updated) {
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                nome: updated.nome || prev.nome,
+                email: updated.email || prev.email,
+                dataCadastro: updated.dataCadastro || prev.dataCadastro,
+              }
+            : updated,
+        );
+      }
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, registerMotociclista, logout }),
-    [user, loading, login, registerMotociclista, logout],
+    () => ({ user, loading, login, registerMotociclista, updateProfile, refreshUser, logout }),
+    [user, loading, login, registerMotociclista, updateProfile, refreshUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

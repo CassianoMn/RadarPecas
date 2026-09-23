@@ -195,7 +195,7 @@ export function AppleIcon({ size = 20 }: { size?: number }) {
 // COMPONENTES DE UI
 // ========================================================
 
-type ButtonVariant = 'primary' | 'ghost' | 'outline' | 'pill';
+type ButtonVariant = 'primary' | 'ghost' | 'outline' | 'pill' | 'danger';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -208,6 +208,7 @@ export function Button({ variant = 'primary', block = false, className = '', ...
     variant === 'ghost' && 'btn-ghost',
     variant === 'outline' && 'btn-outline',
     variant === 'pill' && 'btn-pill',
+    variant === 'danger' && 'btn-danger',
     block && 'btn-block',
     className,
   ]

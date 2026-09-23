@@ -226,6 +226,7 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Implementar cards de ofertas.
 - [x] Implementar detalhes da peça.
 - [x] Implementar indicação de compatibilidade.
+- [x] Implementar tela de manter cadastro de usuário (gerenciar conta / editar perfil de motociclista).
 - [x] Implementar tela de lojas.
 - [x] Implementar avaliação da loja.
 

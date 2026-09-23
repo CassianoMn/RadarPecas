@@ -235,6 +235,28 @@ public class AuthService : IAuthService
             usuario.Nome = request.Nome.Trim();
         }
 
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var emailLimpo = request.Email.Trim().ToLowerInvariant();
+            if (!emailLimpo.Contains('@') || !emailLimpo.Contains('.'))
+            {
+                return ApiResponse<UserProfileResponse>.Fail("Formato de e-mail inválido.");
+            }
+
+            if (!emailLimpo.Equals(usuario.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailJaCadastrado = await _context.Usuarios
+                    .AnyAsync(u => u.Email == emailLimpo && u.Id != userId, cancellationToken);
+
+                if (emailJaCadastrado)
+                {
+                    return ApiResponse<UserProfileResponse>.Fail("Já existe um usuário cadastrado com este e-mail.");
+                }
+
+                usuario.Email = emailLimpo;
+            }
+        }
+
         if (!string.IsNullOrWhiteSpace(request.NovaSenha))
         {
             if (string.IsNullOrWhiteSpace(request.SenhaAtual) || !_passwordHasher.VerifyPassword(request.SenhaAtual, usuario.SenhaHash))

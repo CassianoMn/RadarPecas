@@ -54,4 +54,22 @@ public class AuthServiceTests
         Assert.NotEmpty(token);
         Assert.Contains(".", token); // Formato JWT (header.payload.signature)
     }
+
+    [Fact]
+    public void UpdateProfileRequest_DevePermitirCamposDeNomeEmailESenha()
+    {
+        var request = new RadarPecas.Application.DTOs.Auth.UpdateProfileRequest
+        {
+            Nome = "Novo Nome",
+            Email = "novonome@email.com",
+            SenhaAtual = "SenhaAntiga123",
+            NovaSenha = "NovaSenhaSegura123"
+        };
+
+        Assert.Equal("Novo Nome", request.Nome);
+        Assert.Equal("novonome@email.com", request.Email);
+        Assert.Equal("SenhaAntiga123", request.SenhaAtual);
+        Assert.Equal("NovaSenhaSegura123", request.NovaSenha);
+    }
 }
+
