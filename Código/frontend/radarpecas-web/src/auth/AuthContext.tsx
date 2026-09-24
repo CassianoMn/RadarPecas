@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void load();
   }, []);
 
-  const login = useCallback(async (email: string, senha: string) => {
+  const login = useCallback(async (email: string, senha: string): Promise<User> => {
     const data = await api<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, senha }),
@@ -55,17 +55,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new ApiError('Resposta de login inválida.', 500);
     }
     setToken(data.token);
-    setUser({
+    const loggedUser: User = {
       id: data.userId,
       nome: data.nome,
       email: data.email,
       tipoUsuario: data.tipoUsuario,
       lojaId: data.lojaId,
       nomeLoja: data.nomeLoja,
-    });
+    };
+    setUser(loggedUser);
+    return loggedUser;
   }, []);
 
-  const registerMotociclista = useCallback(async (nome: string, email: string, senha: string) => {
+  const registerMotociclista = useCallback(async (nome: string, email: string, senha: string): Promise<User> => {
     const data = await api<LoginResponse>('/auth/register-motociclista', {
       method: 'POST',
       body: JSON.stringify({ nome, email, senha }),
@@ -74,15 +76,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new ApiError('Resposta de cadastro inválida.', 500);
     }
     setToken(data.token);
-    setUser({
+    const loggedUser: User = {
       id: data.userId,
       nome: data.nome,
       email: data.email,
       tipoUsuario: data.tipoUsuario,
       lojaId: data.lojaId,
       nomeLoja: data.nomeLoja,
-    });
+    };
+    setUser(loggedUser);
+    return loggedUser;
   }, []);
+
+  const registerLojista = useCallback(
+    async (input: {
+      nome: string;
+      nomeFantasia: string;
+      cnpj?: string;
+      email: string;
+      senha: string;
+      enderecoCompleto?: string;
+      telefoneContato?: string;
+    }): Promise<User> => {
+      const data = await api<LoginResponse>('/auth/register-lojista', {
+        method: 'POST',
+        body: JSON.stringify({
+          nome: input.nome || input.nomeFantasia,
+          nomeFantasia: input.nomeFantasia,
+          cnpj: input.cnpj,
+          email: input.email,
+          emailContato: input.email,
+          senha: input.senha,
+          enderecoCompleto: input.enderecoCompleto || 'Av. Tiradentes, 500 - Centro, São Paulo - SP',
+          telefoneContato: input.telefoneContato || '(11) 99999-0000',
+        }),
+      });
+      if (!data?.token || !data?.userId) {
+        throw new ApiError('Resposta de cadastro de lojista inválida.', 500);
+      }
+      setToken(data.token);
+      const loggedUser: User = {
+        id: data.userId,
+        nome: data.nome,
+        email: data.email,
+        tipoUsuario: data.tipoUsuario,
+        lojaId: data.lojaId,
+        nomeLoja: data.nomeLoja,
+      };
+      setUser(loggedUser);
+      return loggedUser;
+    },
+    [],
+  );
 
   const refreshUser = useCallback(async () => {
     if (!getToken()) return;
@@ -122,8 +167,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, registerMotociclista, updateProfile, refreshUser, logout }),
-    [user, loading, login, registerMotociclista, updateProfile, refreshUser, logout],
+    () => ({ user, loading, login, registerMotociclista, registerLojista, updateProfile, refreshUser, logout }),
+    [user, loading, login, registerMotociclista, registerLojista, updateProfile, refreshUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

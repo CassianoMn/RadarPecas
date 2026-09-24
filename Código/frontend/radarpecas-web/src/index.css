@@ -242,9 +242,9 @@ a {
 .content-wrap {
   flex: 1;
   width: 100%;
-  max-width: 1240px;
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 24px 20px 48px;
+  padding: clamp(20px, 2.5vw, 32px) clamp(16px, 3vw, 44px) 48px;
 }
 
 .footer {
@@ -1421,7 +1421,8 @@ a {
    ======================================================== */
 
 .perfil-page-container {
-  max-width: 1040px;
+  width: 100%;
+  max-width: 1520px;
   margin: 0 auto;
   padding: 8px 0 40px;
 }
@@ -1732,4 +1733,167 @@ a {
   border-color: #fecaca;
   background: #fffafa;
 }
+
+/* ========================================================
+   PAINEL DO LOJISTA — RESPONSIVIDADE FLUIDA (MAXIMIZADO E MOBILE)
+   ======================================================== */
+
+.lojista-shell {
+  display: grid;
+  grid-template-columns: 245px minmax(0, 1fr);
+  min-height: calc(100vh - 64px);
+  width: 100%;
+  background: #f8fafc;
+}
+
+.lojista-sidebar {
+  background: #f1f5f9;
+  border-right: 1px solid #e2e8f0;
+  padding: 28px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lojista-sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lojista-main {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: clamp(20px, 2.2vw, 36px) clamp(20px, 3vw, 48px);
+}
+
+.lojista-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 26px;
+}
+
+.lojista-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+  gap: 18px;
+  width: 100%;
+  margin-bottom: 28px;
+}
+
+.lojista-split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 32%);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.lojista-cards-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 20px;
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.lojista-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+
+.lojista-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.lojista-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 14px;
+  width: 100%;
+}
+
+.lojista-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.lojista-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lojista-ranking-row {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+}
+
+.lojista-ranking-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+@media (max-width: 1140px) {
+  .lojista-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .topbar {
+    height: auto;
+    min-height: 64px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .topbar-search-form {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: 100%;
+    margin: 4px 0 0 !important;
+  }
+
+  .lojista-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .lojista-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 14px 16px;
+  }
+
+  .lojista-sidebar-nav-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
 
