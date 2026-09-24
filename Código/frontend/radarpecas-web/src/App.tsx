@@ -15,6 +15,7 @@ import { LojaDetalhesPage } from './pages/LojaDetalhesPage';
 import { AvaliarLojaPage } from './pages/AvaliarLojaPage';
 import { OfertaDetalhesPage } from './pages/OfertaDetalhesPage';
 import { PerfilPage } from './pages/PerfilPage';
+import { LojistaPage } from './pages/LojistaPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 export default function App() {
@@ -29,6 +30,14 @@ export default function App() {
                 <Route path="login" element={<LoginPage />} />
                 <Route path="cadastro" element={<CadastroPage />} />
                 <Route path="busca" element={<BuscaPage />} />
+                <Route
+                  path="lojista"
+                  element={
+                    <RequireAuth>
+                      <LojistaPage />
+                    </RequireAuth>
+                  }
+                />
                 <Route
                   path="garagem"
                   element={

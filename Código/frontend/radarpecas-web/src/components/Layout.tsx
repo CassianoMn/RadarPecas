@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { ArrowLeftIcon, RadarLogo, SearchIcon } from './ui';
 
@@ -11,10 +12,12 @@ export function Layout() {
 
   const [topSearch, setTopSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [showLojistaNotice, setShowLojistaNotice] = useState(true);
 
   const isHome = location.pathname === '/';
+  const isLojistaPanel = location.pathname.startsWith('/lojista');
+  const isFullWidth = isHome || isLojistaPanel;
   const isAuthPage = location.pathname === '/login' || location.pathname === '/cadastro';
+  const isLojistaUser = user?.tipoUsuario === 'LOJISTA';
 
   function handleLogout() {
     logout();
@@ -40,8 +43,8 @@ export function Layout() {
   return (
     <div className="shell">
       <header className="topbar">
-        {/* Seta Voltar se não estiver na Home nem em Auth */}
-        {!isHome && !isAuthPage && (
+        {/* Seta Voltar se não estiver na Home nem em Auth nem no Painel Lojista */}
+        {!isHome && !isAuthPage && !isLojistaPanel && (
           <button
             type="button"
             className="topbar-back-btn"
@@ -54,7 +57,7 @@ export function Layout() {
         )}
 
         {/* Marca & Logo Oficial */}
-        <Link className="brand-wrapper" to="/">
+        <Link className="brand-wrapper" to={isLojistaUser ? '/lojista' : '/'}>
           <div className="brand-logo-icon">
             <RadarLogo size={32} />
           </div>
@@ -76,19 +79,24 @@ export function Layout() {
             >
               Promoções
             </NavLink>
+            {isLojistaUser && (
+              <NavLink to="/lojista" className={({ isActive }) => (isActive ? 'active' : '')}>
+                Dashboard
+              </NavLink>
+            )}
           </nav>
         )}
 
-        {/* Barra de Busca rápida no centro da topbar para telas internas */}
+        {/* Barra de Busca rápida no centro/direita da topbar */}
         {!isHome && !isAuthPage && (
-          <form onSubmit={handleTopSearchSubmit} className="topbar-search-form" role="search">
+          <form onSubmit={handleTopSearchSubmit} className="topbar-search-form" role="search" style={{ marginLeft: 'auto', marginRight: 12 }}>
             <span className="topbar-search-icon" aria-hidden="true">
               <SearchIcon size={16} />
             </span>
             <input
               type="search"
               className="topbar-search-input"
-              placeholder="Buscar peças..."
+              placeholder={isLojistaPanel ? 'Buscar no inventário...' : 'Buscar peças...'}
               value={topSearch}
               onChange={(e) => setTopSearch(e.target.value)}
               aria-label="Buscar peças rapidamente"
@@ -96,9 +104,9 @@ export function Layout() {
           </form>
         )}
 
-        {/* Ações do Usuário (Garagem + Perfil) */}
-        <div className="userbox">
-          {!isAuthPage && (
+        {/* Ações do Usuário (Painel Lojista / Garagem + Perfil) */}
+        <div className="userbox" style={{ marginLeft: isHome || isAuthPage ? 'auto' : 0 }}>
+          {!isAuthPage && !isLojistaUser && (
             <Link className="btn-garage-top" to="/garagem">
               Garagem Virtual
             </Link>
@@ -108,12 +116,35 @@ export function Layout() {
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
-                className="avatar-badge"
+                className={isLojistaUser ? 'btn btn-ghost' : 'avatar-badge'}
                 onClick={() => setShowUserDropdown((v) => !v)}
                 title={user.nome}
                 aria-label="Menu do Usuário"
+                style={
+                  isLojistaUser
+                    ? {
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 12px',
+                        borderRadius: 999,
+                        border: '1px solid var(--border)',
+                        background: '#ffffff',
+                        color: 'var(--primary)',
+                        fontWeight: 600,
+                        fontSize: '0.84rem',
+                      }
+                    : undefined
+                }
               >
-                {user.nome.slice(0, 2).toUpperCase()}
+                {isLojistaUser ? (
+                  <>
+                    <UserCircle size={18} />
+                    <span>{user.nome}</span>
+                  </>
+                ) : (
+                  user.nome.slice(0, 2).toUpperCase()
+                )}
               </button>
 
               {showUserDropdown && (
@@ -135,6 +166,22 @@ export function Layout() {
                     <strong style={{ display: 'block', fontSize: '0.88rem' }}>{user.nome}</strong>
                     <small style={{ color: 'var(--text-muted)' }}>{user.email}</small>
                   </div>
+                  {isLojistaUser && (
+                    <Link
+                      to="/lojista"
+                      style={{
+                        display: 'block',
+                        padding: '8px 16px',
+                        color: 'var(--primary)',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        textDecoration: 'none',
+                      }}
+                      onClick={() => setShowUserDropdown(false)}
+                    >
+                      Painel Lojista
+                    </Link>
+                  )}
                   <Link
                     to="/garagem"
                     style={{
@@ -191,26 +238,10 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Conteúdo da Página: full width se for a tela de Explorar (mapa split-screen), ou content-wrap com margem nas outras telas */}
+      {/* Conteúdo da Página: full width se for a tela de Explorar ou Painel Lojista, ou content-wrap com margem nas outras telas */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {isHome ? <Outlet /> : <div className="content-wrap"><Outlet /></div>}
+        {isFullWidth ? <Outlet /> : <div className="content-wrap"><Outlet /></div>}
       </main>
-
-      {/* Aviso discreto: ainda não há telas de lojista (TODO 14) */}
-      {user?.tipoUsuario === 'LOJISTA' && showLojistaNotice && (
-        <div className="lojista-notice" role="status">
-          <span className="lojista-notice-dot" aria-hidden="true" />
-          <span>Visitando telas para Motociclista. Lojista em breve.</span>
-          <button
-            type="button"
-            className="lojista-notice-close"
-            onClick={() => setShowLojistaNotice(false)}
-            aria-label="Dispensar aviso"
-          >
-            ×
-          </button>
-        </div>
-      )}
     </div>
   );
 }

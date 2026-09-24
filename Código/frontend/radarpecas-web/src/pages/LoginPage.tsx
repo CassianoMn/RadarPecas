@@ -32,8 +32,12 @@ export function LoginPage() {
     setError('');
     setSending(true);
     try {
-      await login(email, senha);
-      navigate(from, { replace: true });
+      const loggedUser = await login(email, senha);
+      if (loggedUser.tipoUsuario === 'LOJISTA' && from === '/') {
+        navigate('/lojista', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Não foi possível entrar. Verifique seus dados.');
     } finally {

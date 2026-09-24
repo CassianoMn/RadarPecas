@@ -29,7 +29,10 @@ public class EstoqueService : IEstoqueService
         var query = _context.EstoqueLojas
             .AsNoTracking()
             .Include(e => e.Peca)
+                .ThenInclude(p => p!.Compatibilidades)
+                    .ThenInclude(c => c.ModeloMoto)
             .Include(e => e.Loja)
+            .Include(e => e.Estatisticas)
             .Where(e => e.LojaId == lojaId);
 
         if (!string.IsNullOrWhiteSpace(busca))
@@ -60,27 +63,39 @@ public class EstoqueService : IEstoqueService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var items = estoques.Select(e => new EstoqueItemResponse
+        var items = estoques.Select(e =>
         {
-            Id = e.Id,
-            LojaId = e.LojaId,
-            NomeLoja = e.Loja?.NomeFantasia ?? string.Empty,
-            PecaId = e.PecaId,
-            NomePeca = e.Peca?.Nome ?? string.Empty,
-            CategoriaPeca = e.Peca?.Categoria ?? string.Empty,
-            FotoPecaUrl = e.Peca?.FotoPecaUrl,
-            Sku = e.Peca?.Sku,
-            CodigoEan = e.Peca?.CodigoEan,
-            QuantidadeEstoque = e.QuantidadeEstoque,
-            AlertaEstoqueMinimo = e.AlertaEstoqueMinimo,
-            PrecoVenda = e.PrecoVenda,
-            EmPromocao = e.EmPromocao,
-            PrecoPromocional = e.PrecoPromocional,
-            PrecoEfetivo = e.PrecoEfetivo,
-            DataInicioPromocao = e.DataInicioPromocao,
-            DataFimPromocao = e.DataFimPromocao,
-            PromocaoAtiva = e.PromocaoAtiva,
-            DataAtualizacao = e.DataAtualizacao
+            var comps = e.Peca?.Compatibilidades?
+                .Where(c => c.ModeloMoto != null)
+                .Select(c => $"{c.ModeloMoto!.Marca} {c.ModeloMoto.Modelo}")
+                .Distinct()
+                .ToList() ?? new List<string>();
+
+            return new EstoqueItemResponse
+            {
+                Id = e.Id,
+                LojaId = e.LojaId,
+                NomeLoja = e.Loja?.NomeFantasia ?? string.Empty,
+                PecaId = e.PecaId,
+                NomePeca = e.Peca?.Nome ?? string.Empty,
+                CategoriaPeca = e.Peca?.Categoria ?? string.Empty,
+                FotoPecaUrl = e.Peca?.FotoPecaUrl,
+                Sku = e.Peca?.Sku,
+                CodigoEan = e.Peca?.CodigoEan,
+                QuantidadeEstoque = e.QuantidadeEstoque,
+                AlertaEstoqueMinimo = e.AlertaEstoqueMinimo,
+                PrecoVenda = e.PrecoVenda,
+                EmPromocao = e.EmPromocao,
+                PrecoPromocional = e.PrecoPromocional,
+                PrecoEfetivo = e.PrecoEfetivo,
+                DataInicioPromocao = e.DataInicioPromocao,
+                DataFimPromocao = e.DataFimPromocao,
+                PromocaoAtiva = e.PromocaoAtiva,
+                Visualizacoes = e.Estatisticas?.Sum(s => s.Visualizacoes) ?? 0,
+                Cliques = e.Estatisticas?.Sum(s => s.Cliques) ?? 0,
+                DescricaoCompatibilidade = comps.Count > 0 ? string.Join(", ", comps) : "Universal",
+                DataAtualizacao = e.DataAtualizacao
+            };
         }).ToList();
 
         var paged = new PagedResult<EstoqueItemResponse>(items, totalCount, page, pageSize);
@@ -92,13 +107,22 @@ public class EstoqueService : IEstoqueService
         var e = await _context.EstoqueLojas
             .AsNoTracking()
             .Include(x => x.Peca)
+                .ThenInclude(p => p!.Compatibilidades)
+                    .ThenInclude(c => c.ModeloMoto)
             .Include(x => x.Loja)
+            .Include(x => x.Estatisticas)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (e == null)
         {
             return ApiResponse<EstoqueItemResponse>.Fail("Oferta/Estoque não encontrado.");
         }
+
+        var comps = e.Peca?.Compatibilidades?
+            .Where(c => c.ModeloMoto != null)
+            .Select(c => $"{c.ModeloMoto!.Marca} {c.ModeloMoto.Modelo}")
+            .Distinct()
+            .ToList() ?? new List<string>();
 
         var response = new EstoqueItemResponse
         {
@@ -120,6 +144,9 @@ public class EstoqueService : IEstoqueService
             DataInicioPromocao = e.DataInicioPromocao,
             DataFimPromocao = e.DataFimPromocao,
             PromocaoAtiva = e.PromocaoAtiva,
+            Visualizacoes = e.Estatisticas?.Sum(s => s.Visualizacoes) ?? 0,
+            Cliques = e.Estatisticas?.Sum(s => s.Cliques) ?? 0,
+            DescricaoCompatibilidade = comps.Count > 0 ? string.Join(", ", comps) : "Universal",
             DataAtualizacao = e.DataAtualizacao
         };
 

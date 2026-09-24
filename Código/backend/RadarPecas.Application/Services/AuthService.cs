@@ -105,13 +105,18 @@ public class AuthService : IAuthService
 
     public async Task<ApiResponse<LoginResponse>> RegisterLojistaAsync(RegisterLojistaRequest request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Nome) ||
+        var nomeFantasia = string.IsNullOrWhiteSpace(request.NomeFantasia) ? request.Nome : request.NomeFantasia;
+        var nomeUsuario = string.IsNullOrWhiteSpace(request.Nome) ? nomeFantasia : request.Nome;
+        var enderecoCompleto = string.IsNullOrWhiteSpace(request.EnderecoCompleto)
+            ? "Av. Tiradentes, 500 - Centro, São Paulo - SP"
+            : request.EnderecoCompleto;
+
+        if (string.IsNullOrWhiteSpace(nomeUsuario) ||
             string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Senha) ||
-            string.IsNullOrWhiteSpace(request.NomeFantasia) ||
-            string.IsNullOrWhiteSpace(request.EnderecoCompleto))
+            string.IsNullOrWhiteSpace(nomeFantasia))
         {
-            return ApiResponse<LoginResponse>.Fail("Preencha todos os campos obrigatórios (nome, e-mail, senha, nome fantasia e endereço).");
+            return ApiResponse<LoginResponse>.Fail("Preencha todos os campos obrigatórios (nome da loja, e-mail e senha).");
         }
 
         if (request.Senha.Length < 6)
@@ -134,10 +139,10 @@ public class AuthService : IAuthService
             }
         }
 
-        decimal lat = request.Latitude ?? 0;
-        decimal lon = request.Longitude ?? 0;
+        decimal lat = request.Latitude ?? -23.5329m;
+        decimal lon = request.Longitude ?? -46.6326m;
 
-        if (lat == 0 && lon == 0)
+        if (!string.IsNullOrWhiteSpace(request.EnderecoCompleto) && (!request.Latitude.HasValue || !request.Longitude.HasValue))
         {
             var coords = await _geocodingService.GeocodeAddressAsync(request.EnderecoCompleto, cancellationToken);
             if (coords.HasValue)
@@ -149,7 +154,7 @@ public class AuthService : IAuthService
 
         var usuario = new Usuario
         {
-            Nome = request.Nome.Trim(),
+            Nome = nomeUsuario.Trim(),
             Email = request.Email.Trim().ToLower(),
             SenhaHash = _passwordHasher.HashPassword(request.Senha),
             TipoUsuario = TipoUsuario.LOJISTA,
@@ -158,17 +163,24 @@ public class AuthService : IAuthService
 
         await _context.Usuarios.AddAsync(usuario, cancellationToken);
 
+        var rawHorarios = string.IsNullOrWhiteSpace(request.HorariosFuncionamento)
+            ? "Segunda a Sexta: 08:00 às 18:00 | Sábado: 08:00 às 13:00 | Domingo: Fechado"
+            : request.HorariosFuncionamento.Trim();
+        var horariosJson = rawHorarios.StartsWith("{") || rawHorarios.StartsWith("[") || rawHorarios.StartsWith("\"")
+            ? rawHorarios
+            : System.Text.Json.JsonSerializer.Serialize(new { resumo = rawHorarios });
+
         var loja = new Loja
         {
             UsuarioId = usuario.Id,
-            NomeFantasia = request.NomeFantasia.Trim(),
+            NomeFantasia = nomeFantasia.Trim(),
             Cnpj = request.Cnpj?.Trim(),
-            EnderecoCompleto = request.EnderecoCompleto.Trim(),
+            EnderecoCompleto = enderecoCompleto.Trim(),
             Latitude = lat,
             Longitude = lon,
-            TelefoneContato = request.TelefoneContato?.Trim(),
+            TelefoneContato = request.TelefoneContato?.Trim() ?? "(11) 99999-0000",
             EmailContato = request.EmailContato?.Trim() ?? usuario.Email,
-            HorariosFuncionamento = request.HorariosFuncionamento,
+            HorariosFuncionamento = horariosJson,
             FotoPerfilUrl = request.FotoPerfilUrl,
             Ativa = true
         };

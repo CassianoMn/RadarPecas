@@ -21,5 +21,8 @@ public class EstoqueItemResponse
     public DateOnly? DataInicioPromocao { get; set; }
     public DateOnly? DataFimPromocao { get; set; }
     public bool PromocaoAtiva { get; set; }
+    public int Visualizacoes { get; set; }
+    public int Cliques { get; set; }
+    public string? DescricaoCompatibilidade { get; set; }
     public DateTime DataAtualizacao { get; set; }
 }
