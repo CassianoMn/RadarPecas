@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Loja } from '../types';
-import { EmptyState, FilterIcon, Loading, StarIcon } from '../components/ui';
+import { EmptyState, Loading, StarIcon } from '../components/ui';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 export function LojasPage() {
