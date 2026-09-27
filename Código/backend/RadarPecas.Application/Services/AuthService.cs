@@ -66,9 +66,14 @@ public class AuthService : IAuthService
             return ApiResponse<LoginResponse>.Fail("Todos os campos obrigatórios devem ser preenchidos.");
         }
 
-        if (request.Senha.Length < 6)
+        if (!SegurancaValidacao.EmailValido(request.Email))
         {
-            return ApiResponse<LoginResponse>.Fail("A senha deve possuir no mínimo 6 caracteres.");
+            return ApiResponse<LoginResponse>.Fail("Informe um e-mail válido.");
+        }
+
+        if (!SegurancaValidacao.SenhaForte(request.Senha))
+        {
+            return ApiResponse<LoginResponse>.Fail("A senha deve ter no mínimo 8 caracteres, com letras e números.");
         }
 
         var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower(), cancellationToken);
@@ -107,21 +112,24 @@ public class AuthService : IAuthService
     {
         var nomeFantasia = string.IsNullOrWhiteSpace(request.NomeFantasia) ? request.Nome : request.NomeFantasia;
         var nomeUsuario = string.IsNullOrWhiteSpace(request.Nome) ? nomeFantasia : request.Nome;
-        var enderecoCompleto = string.IsNullOrWhiteSpace(request.EnderecoCompleto)
-            ? "Av. Tiradentes, 500 - Centro, São Paulo - SP"
-            : request.EnderecoCompleto;
 
         if (string.IsNullOrWhiteSpace(nomeUsuario) ||
             string.IsNullOrWhiteSpace(request.Email) ||
             string.IsNullOrWhiteSpace(request.Senha) ||
-            string.IsNullOrWhiteSpace(nomeFantasia))
+            string.IsNullOrWhiteSpace(nomeFantasia) ||
+            string.IsNullOrWhiteSpace(request.EnderecoCompleto))
         {
-            return ApiResponse<LoginResponse>.Fail("Preencha todos os campos obrigatórios (nome da loja, e-mail e senha).");
+            return ApiResponse<LoginResponse>.Fail("Preencha todos os campos obrigatórios (nome da loja, endereço, e-mail e senha).");
         }
 
-        if (request.Senha.Length < 6)
+        if (!SegurancaValidacao.EmailValido(request.Email))
         {
-            return ApiResponse<LoginResponse>.Fail("A senha deve possuir no mínimo 6 caracteres.");
+            return ApiResponse<LoginResponse>.Fail("Informe um e-mail válido.");
+        }
+
+        if (!SegurancaValidacao.SenhaForte(request.Senha))
+        {
+            return ApiResponse<LoginResponse>.Fail("A senha deve ter no mínimo 8 caracteres, com letras e números.");
         }
 
         var emailExiste = await _context.Usuarios.AnyAsync(u => u.Email.ToLower() == request.Email.Trim().ToLower(), cancellationToken);
@@ -175,10 +183,10 @@ public class AuthService : IAuthService
             UsuarioId = usuario.Id,
             NomeFantasia = nomeFantasia.Trim(),
             Cnpj = request.Cnpj?.Trim(),
-            EnderecoCompleto = enderecoCompleto.Trim(),
+            EnderecoCompleto = request.EnderecoCompleto.Trim(),
             Latitude = lat,
             Longitude = lon,
-            TelefoneContato = request.TelefoneContato?.Trim() ?? "(11) 99999-0000",
+            TelefoneContato = request.TelefoneContato?.Trim(),
             EmailContato = request.EmailContato?.Trim() ?? usuario.Email,
             HorariosFuncionamento = horariosJson,
             FotoPerfilUrl = request.FotoPerfilUrl,
@@ -250,7 +258,7 @@ public class AuthService : IAuthService
         if (!string.IsNullOrWhiteSpace(request.Email))
         {
             var emailLimpo = request.Email.Trim().ToLowerInvariant();
-            if (!emailLimpo.Contains('@') || !emailLimpo.Contains('.'))
+            if (!SegurancaValidacao.EmailValido(emailLimpo))
             {
                 return ApiResponse<UserProfileResponse>.Fail("Formato de e-mail inválido.");
             }
@@ -276,9 +284,9 @@ public class AuthService : IAuthService
                 return ApiResponse<UserProfileResponse>.Fail("A senha atual informada está incorreta.");
             }
 
-            if (request.NovaSenha.Length < 6)
+            if (!SegurancaValidacao.SenhaForte(request.NovaSenha))
             {
-                return ApiResponse<UserProfileResponse>.Fail("A nova senha deve possuir no mínimo 6 caracteres.");
+                return ApiResponse<UserProfileResponse>.Fail("A nova senha deve ter no mínimo 8 caracteres, com letras e números.");
             }
 
             usuario.SenhaHash = _passwordHasher.HashPassword(request.NovaSenha);

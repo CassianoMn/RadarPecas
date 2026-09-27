@@ -107,8 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: input.email,
           emailContato: input.email,
           senha: input.senha,
-          enderecoCompleto: input.enderecoCompleto || 'Av. Tiradentes, 500 - Centro, São Paulo - SP',
-          telefoneContato: input.telefoneContato || '(11) 99999-0000',
+          enderecoCompleto: input.enderecoCompleto,
+          telefoneContato: input.telefoneContato,
         }),
       });
       if (!data?.token || !data?.userId) {

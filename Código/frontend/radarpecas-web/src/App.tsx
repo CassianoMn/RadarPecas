@@ -4,6 +4,7 @@ import { ActiveMotoProvider } from './context/ActiveMotoContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { RequireAuth } from './routes/RequireAuth';
+import { RequireLojista } from './routes/RequireLojista';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { CadastroPage } from './pages/CadastroPage';
@@ -33,9 +34,9 @@ export default function App() {
                 <Route
                   path="lojista"
                   element={
-                    <RequireAuth>
+                    <RequireLojista>
                       <LojistaPage />
-                    </RequireAuth>
+                    </RequireLojista>
                   }
                 />
                 <Route

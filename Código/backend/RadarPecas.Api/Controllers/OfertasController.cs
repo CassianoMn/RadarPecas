@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RadarPecas.Application.Interfaces;
 
 namespace RadarPecas.Api.Controllers;
@@ -33,12 +34,13 @@ public class OfertasController : ControllerBase
         }
 
         // Rastrear visualização automaticamente ao consultar detalhes
-        _ = _estatisticaService.RegistrarVisualizacaoAsync(id);
+        await _estatisticaService.RegistrarVisualizacaoAsync(id);
 
         return Ok(result);
     }
 
     [HttpPost("{id:guid}/visualizacao")]
+    [EnableRateLimiting("metricas")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> RegistrarVisualizacao(Guid id)
     {
@@ -47,6 +49,7 @@ public class OfertasController : ControllerBase
     }
 
     [HttpPost("{id:guid}/clique")]
+    [EnableRateLimiting("metricas")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> RegistrarClique(Guid id)
     {

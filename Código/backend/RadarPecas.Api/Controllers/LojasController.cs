@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RadarPecas.Application.DTOs.Avaliacoes;
 using RadarPecas.Application.DTOs.Lojas;
 using RadarPecas.Application.Interfaces;
@@ -31,7 +32,11 @@ public class LojasController : ControllerBase
         return Guid.TryParse(idStr, out var id) ? id : Guid.Empty;
     }
 
+    private static bool IsAcessoNegado(string message) =>
+        message.StartsWith("Acesso negado", StringComparison.OrdinalIgnoreCase);
+
     [HttpGet]
+    [EnableRateLimiting("busca")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Listar(
         [FromQuery] decimal? userLat,
@@ -92,12 +97,14 @@ public class LojasController : ControllerBase
     [Authorize(Roles = "LOJISTA")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AtualizarLoja(Guid id, [FromBody] UpdateLojaRequest request)
     {
-        var result = await _lojaService.AtualizarLojaAsync(id, request);
+        var result = await _lojaService.AtualizarLojaAsync(id, request, GetUserId());
         if (!result.Success)
         {
+            if (IsAcessoNegado(result.Message)) return StatusCode(StatusCodes.Status403Forbidden, result);
             return BadRequest(result);
         }
         return Ok(result);
@@ -142,12 +149,14 @@ public class LojasController : ControllerBase
     [HttpGet("{id:guid}/dashboard")]
     [Authorize(Roles = "LOJISTA")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterDashboard(Guid id)
     {
-        var result = await _lojaService.ObterDashboardLojistaAsync(id);
+        var result = await _lojaService.ObterDashboardLojistaAsync(id, GetUserId());
         if (!result.Success)
         {
+            if (IsAcessoNegado(result.Message)) return StatusCode(StatusCodes.Status403Forbidden, result);
             return NotFound(result);
         }
         return Ok(result);

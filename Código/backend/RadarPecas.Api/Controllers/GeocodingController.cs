@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RadarPecas.Application.DTOs.Common;
 using RadarPecas.Application.DTOs.Geocoding;
 using RadarPecas.Application.Interfaces;
@@ -17,6 +18,7 @@ public class GeocodingController : ControllerBase
     }
 
     [HttpGet("sugestoes")]
+    [EnableRateLimiting("busca")]
     [ProducesResponseType(typeof(ApiResponse<List<LocalizacaoSugestaoResponse>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> BuscarSugestoes(
         [FromQuery] string? query,
@@ -27,6 +29,8 @@ public class GeocodingController : ControllerBase
         {
             return Ok(ApiResponse<List<LocalizacaoSugestaoResponse>>.Ok(new List<LocalizacaoSugestaoResponse>()));
         }
+
+        limite = Math.Clamp(limite, 1, 15);
 
         var sugestoes = await _geocodingService.BuscarSugestoesAsync(query, limite, cancellationToken);
         return Ok(ApiResponse<List<LocalizacaoSugestaoResponse>>.Ok(sugestoes));

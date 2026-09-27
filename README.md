@@ -207,9 +207,9 @@ O banco é pré-carregado com usuários demonstrativos e dados reais de oficinas
 
 | Perfil | E-mail | Senha | Descrição |
 |---|---|---|---|
-| **Motociclista** | `motociclista@radarpecas.com.br` | `123456` | Lucas Oliveira (garagem com Honda CG 160 e Yamaha FZ25) |
-| **Lojista 1** | `lojista@gmail.com` | `123456` | Carlos Alberto — Radar Motos & Peças Central (Centro Aracaju) |
-| **Lojista 2** | `mariana@gmail.com` | `123456` | Mariana Costa — MotoPower Peças & Oficina (Siqueira Campos) |
+| **Motociclista** | `motociclista@radarpecas.com.br` | `Moto#2026` | Lucas Oliveira (garagem com Honda CG 160 e Yamaha FZ25) |
+| **Lojista 1** | `lojista@gmail.com` | `Loja#2026` | Carlos Alberto — Radar Motos & Peças Central (Centro Aracaju) |
+| **Lojista 2** | `mariana@gmail.com` | `Loja#2026` | Mariana Costa — MotoPower Peças & Oficina (Siqueira Campos) |
 
 ---
 
