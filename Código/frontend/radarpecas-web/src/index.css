@@ -626,6 +626,12 @@ a {
   z-index: 10;
 }
 
+/* Filhos diretos não devem encolher: containers de scroll (ex.: a linha
+   de chips com overflow-x) têm min-height auto = 0 e colapsam na vertical. */
+.explore-sidebar > * {
+  flex-shrink: 0;
+}
+
 .explore-map-wrapper {
   flex: 1;
   position: relative;
