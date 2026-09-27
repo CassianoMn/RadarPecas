@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { Loja } from '../types';
-import { EmptyState, FilterIcon, Loading, StarIcon } from '../components/ui';
+import { EmptyState, Loading, StarIcon } from '../components/ui';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 export function LojasPage() {
@@ -75,25 +75,6 @@ export function LojasPage() {
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
         <button
           type="button"
-          style={{
-            background: '#ffffff',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 'var(--radius-pill)',
-            padding: '7px 16px',
-            fontFamily: 'var(--mono)',
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <FilterIcon size={14} /> Filtros
-        </button>
-
-        <button
-          type="button"
           onClick={() => setFiltroAtivo('proximas')}
           style={{
             background: filtroAtivo === 'proximas' ? '#006375' : '#ffffff',
@@ -134,25 +115,6 @@ export function LojasPage() {
           }}
         >
           <span>☆</span> Melhor Avaliação
-        </button>
-
-        <button
-          type="button"
-          style={{
-            background: '#ffffff',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 'var(--radius-pill)',
-            padding: '7px 16px',
-            fontFamily: 'var(--mono)',
-            fontSize: '0.8rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          Categorias <span>▾</span>
         </button>
       </div>
 
