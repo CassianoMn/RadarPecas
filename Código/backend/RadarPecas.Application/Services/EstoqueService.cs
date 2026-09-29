@@ -242,12 +242,17 @@ public class EstoqueService : IEstoqueService
         return ApiResponse<OfertaDetalheResponse>.Ok(response);
     }
 
-    public async Task<ApiResponse<EstoqueItemResponse>> AdicionarEstoqueAsync(CreateEstoqueRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<EstoqueItemResponse>> AdicionarEstoqueAsync(CreateEstoqueRequest request, Guid usuarioId, CancellationToken cancellationToken = default)
     {
-        var lojaExiste = await _context.Lojas.AnyAsync(l => l.Id == request.LojaId, cancellationToken);
-        if (!lojaExiste)
+        var loja = await _context.Lojas.FirstOrDefaultAsync(l => l.Id == request.LojaId, cancellationToken);
+        if (loja == null)
         {
             return ApiResponse<EstoqueItemResponse>.Fail("Loja não encontrada.");
+        }
+
+        if (loja.UsuarioId != usuarioId)
+        {
+            return ApiResponse<EstoqueItemResponse>.Fail("Acesso negado: esta loja pertence a outro lojista.");
         }
 
         var pecaExiste = await _context.Pecas.AnyAsync(p => p.Id == request.PecaId, cancellationToken);
@@ -310,12 +315,17 @@ public class EstoqueService : IEstoqueService
         return await ObterPorIdAsync(estoque.Id, cancellationToken);
     }
 
-    public async Task<ApiResponse<EstoqueItemResponse>> AtualizarEstoqueAsync(Guid id, UpdateEstoqueRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<EstoqueItemResponse>> AtualizarEstoqueAsync(Guid id, UpdateEstoqueRequest request, Guid usuarioId, CancellationToken cancellationToken = default)
     {
         var estoque = await _context.EstoqueLojas.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (estoque == null)
         {
             return ApiResponse<EstoqueItemResponse>.Fail("Item de estoque não encontrado.");
+        }
+
+        if (!await LojaPertenceAoUsuarioAsync(estoque.LojaId, usuarioId, cancellationToken))
+        {
+            return ApiResponse<EstoqueItemResponse>.Fail("Acesso negado: este item pertence a outra loja.");
         }
 
         if (request.QuantidadeEstoque < 0)
@@ -338,12 +348,17 @@ public class EstoqueService : IEstoqueService
         return await ObterPorIdAsync(estoque.Id, cancellationToken);
     }
 
-    public async Task<ApiResponse<EstoqueItemResponse>> AtualizarPromocaoAsync(Guid id, AtualizarPromocaoRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<EstoqueItemResponse>> AtualizarPromocaoAsync(Guid id, AtualizarPromocaoRequest request, Guid usuarioId, CancellationToken cancellationToken = default)
     {
         var estoque = await _context.EstoqueLojas.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (estoque == null)
         {
             return ApiResponse<EstoqueItemResponse>.Fail("Item de estoque não encontrado.");
+        }
+
+        if (!await LojaPertenceAoUsuarioAsync(estoque.LojaId, usuarioId, cancellationToken))
+        {
+            return ApiResponse<EstoqueItemResponse>.Fail("Acesso negado: este item pertence a outra loja.");
         }
 
         if (request.EmPromocao)
@@ -375,7 +390,7 @@ public class EstoqueService : IEstoqueService
         return await ObterPorIdAsync(estoque.Id, cancellationToken);
     }
 
-    public async Task<ApiResponse<bool>> RemoverEstoqueAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<bool>> RemoverEstoqueAsync(Guid id, Guid usuarioId, CancellationToken cancellationToken = default)
     {
         var estoque = await _context.EstoqueLojas.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         if (estoque == null)
@@ -383,9 +398,19 @@ public class EstoqueService : IEstoqueService
             return ApiResponse<bool>.Fail("Item de estoque não encontrado.");
         }
 
+        if (!await LojaPertenceAoUsuarioAsync(estoque.LojaId, usuarioId, cancellationToken))
+        {
+            return ApiResponse<bool>.Fail("Acesso negado: este item pertence a outra loja.");
+        }
+
         _context.EstoqueLojas.Remove(estoque);
         await _context.SaveChangesAsync(cancellationToken);
 
         return ApiResponse<bool>.Ok(true, "Item removido do estoque com sucesso.");
+    }
+
+    private async Task<bool> LojaPertenceAoUsuarioAsync(Guid lojaId, Guid usuarioId, CancellationToken cancellationToken)
+    {
+        return await _context.Lojas.AnyAsync(l => l.Id == lojaId && l.UsuarioId == usuarioId, cancellationToken);
     }
 }

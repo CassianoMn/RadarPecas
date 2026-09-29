@@ -256,7 +256,7 @@ public static class DatabaseSeeder
                 {
                     Nome = "Carlos Alberto (Lojista)",
                     Email = "lojista@gmail.com",
-                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 11),
+                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("Loja#2026", 11),
                     TipoUsuario = TipoUsuario.LOJISTA,
                     DataCadastro = DateTime.UtcNow
                 };
@@ -266,7 +266,7 @@ public static class DatabaseSeeder
                 {
                     Nome = "Mariana Costa (Lojista)",
                     Email = "mariana@gmail.com",
-                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 11),
+                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("Loja#2026", 11),
                     TipoUsuario = TipoUsuario.LOJISTA,
                     DataCadastro = DateTime.UtcNow
                 };
@@ -276,7 +276,7 @@ public static class DatabaseSeeder
                 {
                     Nome = "Lucas Oliveira (Motociclista)",
                     Email = "motociclista@radarpecas.com.br",
-                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("123456", 11),
+                    SenhaHash = BCrypt.Net.BCrypt.HashPassword("Moto#2026", 11),
                     TipoUsuario = TipoUsuario.MOTOCICLISTA,
                     DataCadastro = DateTime.UtcNow
                 };

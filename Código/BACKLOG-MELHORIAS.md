@@ -7,28 +7,15 @@ Arquivo LOCAL — não commitar. Data-base: 2026-09-27, `main` @ `6e18671`.
 Legenda: **P0** = crítico/segurança · **P1** = funcional/dados · **P2** = qualidade/docs/processo.
 Marque `[x]` ao concluir.
 
-## P0 — Segurança (fazer antes de qualquer deploy público)
+## P0 — Segurança (resolvido na branch `26-seguranca-end-to-end`, issue #26)
 
-- [ ] **IDOR do lojista**: `EstoqueService` (update/delete) e `LojaService.AtualizarLoja/Dashboard`
-  nunca conferem `Loja.UsuarioId == userId` — qualquer LOJISTA edita/vê loja alheia e o
-  catálogo global de peças. Passar `userId` do claim, retornar 403.
-  (`Api/Controllers/LojasController.cs:98,143`, `EstoqueController.cs:47,62,77`)
-- [ ] **Segredos commitados**: JWT + senha do banco em `Program.cs:22,72`,
-  `JwtTokenService.cs:22`, `appsettings.json:10,13`, `.env.example`. Remover fallbacks
-  (fail-fast via env), rotacionar o JWT atual.
-- [ ] **XSS via Leaflet na Home + token em localStorage = sequestro de sessão**:
-  escapar HTML antes de `divIcon html`/`bindPopup` (`HomePage.tsx:105-116,160-186`),
-  `noopener/noreferrer` nos `window.open` (`OfertaDetalhesPage.tsx:42,49`); avaliar
-  cookie httpOnly no futuro.
-- [ ] **Sem guard de papel no front**: `RequireAuth.tsx` só checa login; `/lojista`
-  abre para motociclista (`App.tsx:33-40`, `LojistaPage.tsx:173`). Criar `RequireLojista`.
-- [ ] **Endpoints públicos sem throttle**: busca, lojas, ofertas (view/clique),
-  geocoding (proxy Nominatim) — spam/DoS/abuso. Rate limit + `UPDATE views=views+1`
-  atômico em vez de read-increment-save (`EstatisticaService.cs:20-71`, `OfertasController.cs:36`).
-- [ ] **CORS/HSTS frouxos**: fallback `AllowAnyOrigin` (`Program.cs:64-66`) e
-  `RequireHttpsMetadata=false` (`Program.cs:83`). Endurecer em produção.
-- [ ] **Seed e política de senha fracos**: `123456` no seeder, mínimo 6 chars,
-  e-mail validado com `Contains('@')` (`AuthService.cs:69,122,253,279`).
+- [x] **IDOR do lojista**: ownership check + 403 (verificado: cross-PUT, cross-dashboard e cross-estoque → 403; dono → 200).
+- [x] **Segredos commitados**: fallbacks removidos (fail-fast), JWT rotacionado (só em `appsettings.Development.json`), `.env.example` com placeholder.
+- [x] **XSS via Leaflet**: `escapeHtml` na Home; `noopener/noreferrer` na oferta. (cookie httpOnly: futuro)
+- [x] **Guard de papel**: `RequireLojista` em `/lojista` (motociclista é redirecionado p/ `/`).
+- [x] **Throttle + métricas**: RateLimiter (`busca` 60/min, `metricas` 120/min), upsert atômico, `await` na visualização, `limite` do geocoding clampado.
+- [x] **CORS/HSTS**: fail-closed sem origens; `RequireHttpsMetadata` fora de Development.
+- [x] **Senha/e-mail**: política 8+letra+número (`SegurancaValidacao` + 15 testes), `MailAddress`, fim dos defaults falsos no cadastro, seed com senhas fortes.
 
 ## P1 — Corretude, dados e fluxos
 

@@ -35,8 +35,8 @@ export function CadastroPage() {
     e.preventDefault();
     setError('');
 
-    if (senha.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres.');
+    if (senha.length < 8 || !/[A-Za-z]/.test(senha) || !/[0-9]/.test(senha)) {
+      setError('A senha deve ter no mínimo 8 caracteres, com letras e números.');
       return;
     }
 
@@ -53,13 +53,18 @@ export function CadastroPage() {
           setSending(false);
           return;
         }
+        if (!enderecoLoja.trim()) {
+          setError('Informe o endereço principal da loja.');
+          setSending(false);
+          return;
+        }
         await registerLojista({
           nome: nomeLoja.trim(),
           nomeFantasia: nomeLoja.trim(),
           cnpj: cnpj.trim() || undefined,
           email: email.trim(),
           senha,
-          enderecoCompleto: enderecoLoja.trim() || undefined,
+          enderecoCompleto: enderecoLoja.trim(),
         });
         navigate('/lojista', { replace: true });
       } else {
@@ -227,11 +232,12 @@ export function CadastroPage() {
                 </div>
               </Field>
 
-              <Field label="Endereço Principal (Opcional)">
+              <Field label="Endereço Principal">
                 <div style={{ position: 'relative' }}>
                   <MapPin size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                   <TextInput
                     type="text"
+                    required
                     value={enderecoLoja}
                     onChange={(e) => setEnderecoLoja(e.target.value)}
                     placeholder="Ex: Av. Tiradentes, 500 - Centro, São Paulo - SP"

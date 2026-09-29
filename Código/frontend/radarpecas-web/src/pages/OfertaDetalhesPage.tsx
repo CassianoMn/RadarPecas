@@ -39,14 +39,14 @@ export function OfertaDetalhesPage() {
       const msg = encodeURIComponent(
         `Olá! Gostaria de reservar o "${oferta.peca.nome}" (Cód: ${oferta.peca.sku || 'N/A'}) que vi no RadarPeças.`
       );
-      window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, '_blank');
+      window.open(`https://wa.me/55${cleanPhone}?text=${msg}`, '_blank', 'noopener,noreferrer');
     }
   }
 
   function handleIrAteALoja() {
     if (!oferta) return;
     const endereco = encodeURIComponent(oferta.loja.enderecoCompleto);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank');
+    window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank', 'noopener,noreferrer');
   }
 
   if (loading) return <Loading text="Carregando detalhes do produto..." />;

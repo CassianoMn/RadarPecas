@@ -220,12 +220,17 @@ public class LojaService : ILojaService
         return await ObterLojaPorIdAsync(loja.Id, null, null, cancellationToken);
     }
 
-    public async Task<ApiResponse<LojaResponse>> AtualizarLojaAsync(Guid id, UpdateLojaRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<LojaResponse>> AtualizarLojaAsync(Guid id, UpdateLojaRequest request, Guid usuarioId, CancellationToken cancellationToken = default)
     {
         var loja = await _context.Lojas.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
         if (loja == null)
         {
             return ApiResponse<LojaResponse>.Fail("Loja não encontrada.");
+        }
+
+        if (loja.UsuarioId != usuarioId)
+        {
+            return ApiResponse<LojaResponse>.Fail("Acesso negado: esta loja pertence a outro lojista.");
         }
 
         if (string.IsNullOrWhiteSpace(request.NomeFantasia) || string.IsNullOrWhiteSpace(request.EnderecoCompleto))
@@ -279,7 +284,7 @@ public class LojaService : ILojaService
         return await ObterLojaPorIdAsync(loja.Id, null, null, cancellationToken);
     }
 
-    public async Task<ApiResponse<DashboardLojistaResponse>> ObterDashboardLojistaAsync(Guid lojaId, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<DashboardLojistaResponse>> ObterDashboardLojistaAsync(Guid lojaId, Guid usuarioId, CancellationToken cancellationToken = default)
     {
         var loja = await _context.Lojas
             .AsNoTracking()
@@ -293,6 +298,11 @@ public class LojaService : ILojaService
         if (loja == null)
         {
             return ApiResponse<DashboardLojistaResponse>.Fail("Loja não encontrada.");
+        }
+
+        if (loja.UsuarioId != usuarioId)
+        {
+            return ApiResponse<DashboardLojistaResponse>.Fail("Acesso negado: esta loja pertence a outro lojista.");
         }
 
         var totalProdutos = loja.Estoques.Count;

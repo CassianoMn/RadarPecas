@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using RadarPecas.Application.DTOs.Busca;
 using RadarPecas.Application.Interfaces;
 
@@ -16,6 +17,7 @@ public class BuscaController : ControllerBase
     }
 
     [HttpGet]
+    [EnableRateLimiting("busca")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Buscar([FromQuery] BuscaFiltrosRequest filtros)
     {

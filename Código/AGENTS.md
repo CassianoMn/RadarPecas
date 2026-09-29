@@ -93,8 +93,11 @@ via SQL + seed se vazio) → Swagger (só Development) → `GET /api/health` (p�
 
 ### Auth
 JWT HMAC-SHA256, 24h, `ClockSkew` zero; claims `NameIdentifier/Email/Name/Role/tipo_usuario/loja_id/nome_loja`.
-Senha com BCrypt (work factor 11). Perfis: `Motociclista` e `LOJISTA`. Respostas no envelope
-`ApiResponse<T> {success, message, data, errors}`.
+Senha com BCrypt (work factor 11), política 8+letra+número (`SegurancaValidacao`), e-mail via `MailAddress`.
+Perfis: `Motociclista` e `LOJISTA`. Login inválido → **401** (mensagem no envelope).
+Ownership de loja validada nos services (cross-lojista → **403**). Segredo JWT obrigatório
+(fail-fast; dev em `appsettings.Development.json`). Rate limit: `busca` 60/min, `metricas` 120/min.
+Respostas no envelope `ApiResponse<T> {success, message, data, errors}`.
 
 ### Controllers × Services (base `http://localhost:5150/api`)
 
@@ -121,9 +124,9 @@ DTOs espelham isso em `Application/DTOs/`: `Auth/`, `Lojas/`, `Estoque/`, `Pecas
 Geolocalização: `lojas.latitude/longitude DECIMAL` + `GeolocationService` (Haversine).
 
 ### Seed e contas de teste
-- Motociclista `motociclista@radarpecas.com.br` / `123456` (Lucas Oliveira; garagem: Honda CG 160 + Yamaha FZ25)
-- Lojista `lojista@gmail.com` / `123456` (Carlos Alberto — Radar Motos & Peças Central)
-- Lojista `mariana@gmail.com` / `123456` (Mariana Costa)
+- Motociclista `motociclista@radarpecas.com.br` / `Moto#2026` (Lucas Oliveira; garagem: Honda CG 160 + Yamaha FZ25)
+- Lojista `lojista@gmail.com` / `Loja#2026` (Carlos Alberto — Radar Motos & Peças Central)
+- Lojista `mariana@gmail.com` / `Loja#2026` (Mariana Costa)
 - IDs úteis p/ teste manual: loja com estoque `370bfb3d-4ee2-4308-bc91-b05fba2ab7f2`,
   oferta `bed7cc2f-5d7b-4b3c-b84b-a2e73a335423`.
 
@@ -134,7 +137,7 @@ centralizado em `src/lib/api.ts` (lê o envelope, lança `ApiError`, injeta `Bea
 `localStorage` chave `radarpecas:token`, base em `VITE_API_BASE_URL` com fallback
 `http://localhost:5150/api`). Estado só com Context: `AuthContext` (usuário, login, registro,
 `refreshUser`, logout) + `ActiveMotoContext` (moto ativa, escopada por `userId` no storage).
-Guarda de rota: `routes/RequireAuth.tsx`. Utilidades: `lib/formatters.ts` (moeda, horários),
+Guarda de rota: `routes/RequireAuth.tsx` (login) e `routes/RequireLojista.tsx` (`/lojista`). Utilidades: `lib/formatters.ts` (moeda, horários),
 `lib/location.ts` (coords guardadas), `types/index.ts` (Loja, Peca, EstoqueItem, etc.).
 Design system próprio em CSS vanilla (`index.css`, variáveis `:root` + classes `.card/.btn/.chip/…`)
 mais ~683 estilos inline; componentes base em `components/ui.tsx` (Button, Field, TextInput,

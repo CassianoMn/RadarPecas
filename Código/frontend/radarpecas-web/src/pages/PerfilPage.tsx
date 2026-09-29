@@ -81,8 +81,8 @@ export function PerfilPage() {
         setErrorMsg('Informe sua senha atual para autorizar a alteração de senha.');
         return;
       }
-      if (!novaSenha || novaSenha.length < 6) {
-        setErrorMsg('A nova senha deve ter no mínimo 6 caracteres.');
+      if (!novaSenha || novaSenha.length < 8 || !/[A-Za-z]/.test(novaSenha) || !/[0-9]/.test(novaSenha)) {
+        setErrorMsg('A nova senha deve ter no mínimo 8 caracteres, com letras e números.');
         return;
       }
       if (novaSenha !== confirmarNovaSenha) {
@@ -299,7 +299,7 @@ export function PerfilPage() {
                         type={showNovaSenha ? 'text' : 'password'}
                         value={novaSenha}
                         onChange={(e) => setNovaSenha(e.target.value)}
-                        placeholder="Mínimo 6 caracteres"
+                        placeholder="Mínimo 8 caracteres (letras e números)"
                         autoComplete="new-password"
                       />
                       <button
@@ -390,7 +390,7 @@ export function PerfilPage() {
           <div className="perfil-side-card">
             <h4 className="perfil-side-title">Dica de Segurança</h4>
             <p className="perfil-side-text">
-              Utilize uma senha com pelo menos 6 caracteres combinando letras e números para maior
+              Utilize uma senha com pelo menos 8 caracteres combinando letras e números para maior
               proteção da sua conta.
             </p>
           </div>

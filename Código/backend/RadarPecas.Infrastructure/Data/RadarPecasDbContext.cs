@@ -21,6 +21,9 @@ public class RadarPecasDbContext : DbContext, IApplicationDbContext
     public DbSet<AvaliacaoLoja> AvaliacoesLoja => Set<AvaliacaoLoja>();
     public DbSet<EstatisticaOferta> EstatisticasOferta => Set<EstatisticaOferta>();
 
+    public Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters) =>
+        Database.ExecuteSqlRawAsync(sql, parameters);
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

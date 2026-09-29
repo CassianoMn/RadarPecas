@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -16,10 +18,15 @@ CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuração da Conexão com o PostgreSQL
+// 1. Configuração da Conexão com o PostgreSQL (sem fallback com senha: falhe cedo e explícito)
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Host=localhost;Port=5432;Database=radarPecas;Username=postgres;Password=123456";
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Connection string não configurada. Defina DATABASE_URL ou ConnectionStrings:DefaultConnection.");
+}
 
 builder.Services.AddDbContext<RadarPecasDbContext>(options =>
 {
@@ -45,7 +52,7 @@ builder.Services.AddScoped<ILojaService, LojaService>();
 builder.Services.AddScoped<IAvaliacaoService, AvaliacaoService>();
 builder.Services.AddScoped<IEstatisticaService, EstatisticaService>();
 
-// 3. Configuração do CORS
+// 3. Configuração do CORS (fail-closed: sem origens configuradas, nada é liberado)
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
@@ -61,17 +68,40 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+            // Nenhuma origem configurada: política vazia (nega cross-origin).
+            policy.WithOrigins(Array.Empty<string>());
         }
     });
 });
 
-// 4. Configuração da Autenticação JWT
-var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "radar_pecas_super_secret_key_tcc_ufs_2026_min_32_chars!";
+// 3b. Rate limiting das rotas públicas (busca, catálogo, geocoding, métricas)
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("busca", o =>
+    {
+        o.PermitLimit = 60;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueLimit = 0;
+    });
+    options.AddFixedWindowLimiter("metricas", o =>
+    {
+        o.PermitLimit = 120;
+        o.Window = TimeSpan.FromMinutes(1);
+        o.QueueLimit = 0;
+    });
+});
+
+// 4. Configuração da Autenticação JWT (segredo obrigatório: sem fallback hardcoded)
+var jwtSecret = builder.Configuration["Jwt:Secret"];
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "RadarPecasAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "RadarPecasApp";
+
+if (string.IsNullOrWhiteSpace(jwtSecret) || jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Secret não configurado (mínimo 32 caracteres). Defina via variável de ambiente ou appsettings de desenvolvimento.");
+}
 
 builder.Services.AddAuthentication(options =>
 {
@@ -80,7 +110,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -170,6 +200,8 @@ app.UseCors("DefaultCorsPolicy");
 // Habilitação de Autenticação e Autorização
 app.UseAuthentication();
 app.UseAuthorization();
+
+app.UseRateLimiter();
 
 app.MapControllers();
 

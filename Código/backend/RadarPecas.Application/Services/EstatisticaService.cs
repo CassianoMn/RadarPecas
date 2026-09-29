@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using RadarPecas.Application.Interfaces;
-using RadarPecas.Domain.Entities;
 
 namespace RadarPecas.Application.Services;
 
@@ -15,59 +14,29 @@ public class EstatisticaService : IEstatisticaService
 
     public async Task RegistrarVisualizacaoAsync(Guid estoqueId, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        // Id inválido: no-op (comportamento anterior).
+        if (!await _context.EstoqueLojas.AnyAsync(e => e.Id == estoqueId, cancellationToken)) return;
 
-        var stat = await _context.EstatisticasOferta
-            .FirstOrDefaultAsync(s => s.EstoqueLojaId == estoqueId && s.DataRegistro == hoje, cancellationToken);
-
-        if (stat != null)
-        {
-            stat.Visualizacoes++;
-        }
-        else
-        {
-            var estoqueExiste = await _context.EstoqueLojas.AnyAsync(e => e.Id == estoqueId, cancellationToken);
-            if (!estoqueExiste) return;
-
-            stat = new EstatisticaOferta
-            {
-                EstoqueLojaId = estoqueId,
-                Visualizacoes = 1,
-                Cliques = 0,
-                DataRegistro = hoje
-            };
-            await _context.EstatisticasOferta.AddAsync(stat, cancellationToken);
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
+        // Upsert atômico: evita lost update sob concorrência (INSERT ... ON CONFLICT).
+        const string sql = """
+            INSERT INTO estatisticas_oferta (id, estoque_loja_id, visualizacoes, cliques, data_registro)
+            VALUES (gen_random_uuid(), {0}, 1, 0, CURRENT_DATE)
+            ON CONFLICT (estoque_loja_id, data_registro)
+            DO UPDATE SET visualizacoes = estatisticas_oferta.visualizacoes + 1;
+            """;
+        await _context.ExecuteSqlRawAsync(sql, estoqueId);
     }
 
     public async Task RegistrarCliqueAsync(Guid estoqueId, CancellationToken cancellationToken = default)
     {
-        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        if (!await _context.EstoqueLojas.AnyAsync(e => e.Id == estoqueId, cancellationToken)) return;
 
-        var stat = await _context.EstatisticasOferta
-            .FirstOrDefaultAsync(s => s.EstoqueLojaId == estoqueId && s.DataRegistro == hoje, cancellationToken);
-
-        if (stat != null)
-        {
-            stat.Cliques++;
-        }
-        else
-        {
-            var estoqueExiste = await _context.EstoqueLojas.AnyAsync(e => e.Id == estoqueId, cancellationToken);
-            if (!estoqueExiste) return;
-
-            stat = new EstatisticaOferta
-            {
-                EstoqueLojaId = estoqueId,
-                Visualizacoes = 1,
-                Cliques = 1,
-                DataRegistro = hoje
-            };
-            await _context.EstatisticasOferta.AddAsync(stat, cancellationToken);
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
+        const string sql = """
+            INSERT INTO estatisticas_oferta (id, estoque_loja_id, visualizacoes, cliques, data_registro)
+            VALUES (gen_random_uuid(), {0}, 1, 1, CURRENT_DATE)
+            ON CONFLICT (estoque_loja_id, data_registro)
+            DO UPDATE SET cliques = estatisticas_oferta.cliques + 1;
+            """;
+        await _context.ExecuteSqlRawAsync(sql, estoqueId);
     }
 }

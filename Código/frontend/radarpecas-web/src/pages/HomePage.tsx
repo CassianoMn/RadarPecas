@@ -37,6 +37,16 @@ export function HomePage() {
 
   const categories = ['Pneus', 'Óleos', 'Freios', 'Relação', 'Baterias', 'Filtros'];
 
+  // Escapa texto interpolado no HTML do Leaflet (divIcon/bindPopup) contra XSS persistido.
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   const carregarLojasPorCoordenadas = useCallback(async (lat?: number, lon?: number) => {
     setLoading(true);
     try {
@@ -162,7 +172,7 @@ export function HomePage() {
         html: `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
             <div style="background: #ffffff; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #006375; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; margin-bottom: 3px; white-space: nowrap;">
-              ${loja.nomeFantasia.split(' ')[0]}
+              ${escapeHtml(loja.nomeFantasia.split(' ')[0])}
             </div>
             <div style="width: 38px; height: 38px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #0284c7; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.25); border: 2px solid #ffffff;">
               <span style="transform: rotate(45deg); color: #ffffff; font-size: 16px;">⚙</span>
@@ -176,8 +186,8 @@ export function HomePage() {
       const marker = L.marker([lat, lng], { icon: storePinIcon });
       marker.bindPopup(`
         <div style="font-family: var(--sans); padding: 4px;">
-          <strong style="font-size: 14px; color: #006375; display: block;">${loja.nomeFantasia}</strong>
-          <p style="margin: 4px 0; font-size: 12px; color: #64748b;">${loja.enderecoCompleto}</p>
+          <strong style="font-size: 14px; color: #006375; display: block;">${escapeHtml(loja.nomeFantasia)}</strong>
+          <p style="margin: 4px 0; font-size: 12px; color: #64748b;">${escapeHtml(loja.enderecoCompleto)}</p>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
             <span style="color: #f59e0b; font-weight: bold; font-size: 12px;">★ ${loja.mediaAvaliacao.toFixed(1)}</span>
             <a href="/lojas/${loja.id}" style="background: #006375; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 11px; text-decoration: none;">Ver Loja</a>

@@ -1,3 +1,4 @@
+using System;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +21,18 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.LoginAsync(request);
         if (!result.Success)
         {
+            // Credenciais inválidas ou ausentes: 401 (o front exibe result.Message).
+            if (result.Message.StartsWith("Credenciais inválidas", StringComparison.OrdinalIgnoreCase)
+                || result.Message.StartsWith("E-mail e senha", StringComparison.OrdinalIgnoreCase))
+            {
+                return Unauthorized(result);
+            }
             return BadRequest(result);
         }
         return Ok(result);

@@ -19,10 +19,15 @@ public class JwtTokenService : IJwtTokenService
 
     public string GenerateToken(Usuario usuario, Loja? loja = null)
     {
-        var secretKey = _configuration["Jwt:Secret"] ?? "radar_pecas_super_secret_key_tcc_ufs_2026_min_32_chars!";
+        var secretKey = _configuration["Jwt:Secret"];
         var issuer = _configuration["Jwt:Issuer"] ?? "RadarPecasAPI";
         var audience = _configuration["Jwt:Audience"] ?? "RadarPecasApp";
         var expirationHoursStr = _configuration["Jwt:ExpirationHours"] ?? "24";
+
+        if (string.IsNullOrWhiteSpace(secretKey) || secretKey.Length < 32)
+        {
+            throw new InvalidOperationException("Jwt:Secret não configurado (mínimo 32 caracteres).");
+        }
 
         if (!double.TryParse(expirationHoursStr, out var expirationHours))
         {
