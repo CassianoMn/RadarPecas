@@ -176,7 +176,7 @@ public class AuthService : IAuthService
             : request.HorariosFuncionamento.Trim();
         var horariosJson = rawHorarios.StartsWith("{") || rawHorarios.StartsWith("[") || rawHorarios.StartsWith("\"")
             ? rawHorarios
-            : System.Text.Json.JsonSerializer.Serialize(new { resumo = rawHorarios });
+            : System.Text.Json.JsonSerializer.Serialize(rawHorarios);
 
         var loja = new Loja
         {
