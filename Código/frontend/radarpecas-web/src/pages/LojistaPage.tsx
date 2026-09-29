@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 import {
   AlertTriangle,
   Archive,
@@ -36,6 +36,7 @@ import {
   Tag,
   Trash2,
   TrendingUp,
+  Upload,
   Wrench,
 } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
@@ -144,8 +145,71 @@ function parseHorarios(raw?: string | null): HorarioDia[] {
   if (!raw) return DEFAULT_HORARIOS;
   try {
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length === 7) {
-      return parsed;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return DEFAULT_HORARIOS.map((def) => {
+        const found = parsed.find(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (p: any) =>
+            p &&
+            typeof p === 'object' &&
+            p.dia &&
+            String(p.dia).toLowerCase().trim() === def.dia.toLowerCase().trim(),
+        );
+        if (found) {
+          return {
+            dia: def.dia,
+            abre: typeof found.abre === 'string' && found.abre ? found.abre : def.abre,
+            fecha: typeof found.fecha === 'string' && found.fecha ? found.fecha : def.fecha,
+            fechado: Boolean(found.fechado),
+          };
+        }
+        return def;
+      });
+    }
+
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Se for formato de objeto como {"seg_sex": "08:00 - 18:00", "sab": "08:00 - 13:00"}
+      const segSex = parsed.seg_sex || parsed['seg-sex'] || parsed.seg_a_sex;
+      const sab = parsed.sab || parsed.sabado || parsed['sábado'];
+      const dom = parsed.dom || parsed.domingo;
+
+      let abreSegSex = '08:00';
+      let fechaSegSex = '18:00';
+      let fechadoSegSex = false;
+      if (segSex && typeof segSex === 'string') {
+        const parts = segSex.split(/[-–às]/).map((p: string) => p.trim());
+        if (parts.length >= 2) {
+          abreSegSex = parts[0].slice(0, 5);
+          fechaSegSex = parts[1].slice(0, 5);
+        } else if (segSex.toLowerCase().includes('fechado')) {
+          fechadoSegSex = true;
+        }
+      }
+
+      let abreSab = '08:00';
+      let fechaSab = '13:00';
+      let fechadoSab = false;
+      if (sab && typeof sab === 'string') {
+        const parts = sab.split(/[-–às]/).map((p: string) => p.trim());
+        if (parts.length >= 2) {
+          abreSab = parts[0].slice(0, 5);
+          fechaSab = parts[1].slice(0, 5);
+        } else if (sab.toLowerCase().includes('fechado')) {
+          fechadoSab = true;
+        }
+      }
+
+      const fechadoDom = !dom || typeof dom !== 'string' || dom.toLowerCase().includes('fechado');
+
+      return [
+        { dia: 'Segunda', abre: abreSegSex, fecha: fechaSegSex, fechado: fechadoSegSex },
+        { dia: 'Terça', abre: abreSegSex, fecha: fechaSegSex, fechado: fechadoSegSex },
+        { dia: 'Quarta', abre: abreSegSex, fecha: fechaSegSex, fechado: fechadoSegSex },
+        { dia: 'Quinta', abre: abreSegSex, fecha: fechaSegSex, fechado: fechadoSegSex },
+        { dia: 'Sexta', abre: abreSegSex, fecha: fechaSegSex, fechado: fechadoSegSex },
+        { dia: 'Sábado', abre: abreSab, fecha: fechaSab, fechado: fechadoSab },
+        { dia: 'Domingo', abre: '00:00', fecha: '00:00', fechado: fechadoDom },
+      ];
     }
   } catch {
     // fallback to default
@@ -236,12 +300,30 @@ export function LojistaPage() {
   // Form Perfil da Loja
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [pfNomeFantasia, setPfNomeFantasia] = useState('');
+  const [pfFotoPerfilUrl, setPfFotoPerfilUrl] = useState('');
   const [pfTelefone, setPfTelefone] = useState('');
   const [pfEmailContato, setPfEmailContato] = useState('');
   const [pfEndereco, setPfEndereco] = useState('');
   const [pfHorarios, setPfHorarios] = useState<HorarioDia[]>(DEFAULT_HORARIOS);
   const [pfFotos, setPfFotos] = useState(STORE_GALLERY_DEFAULT);
   const [pfSaving, setPfSaving] = useState(false);
+
+  function handleFotoPerfilFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('A foto de perfil deve ter no máximo 2MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      if (base64) {
+        setPfFotoPerfilUrl(base64);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 
   const notifySuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -292,6 +374,7 @@ export function LojistaPage() {
       if (minhaLoja) {
         setLoja(minhaLoja);
         setPfNomeFantasia(minhaLoja.nomeFantasia || '');
+        setPfFotoPerfilUrl(minhaLoja.fotoPerfilUrl || '');
         setPfTelefone(minhaLoja.telefoneContato || '(11) 98765-4321');
         setPfEmailContato(minhaLoja.emailContato || user?.email || '');
         setPfEndereco(minhaLoja.enderecoCompleto || '');
@@ -316,7 +399,7 @@ export function LojistaPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [user?.id, user?.lojaId, user?.nome, user?.email, refreshUser]);
+  }, [user, refreshUser]);
 
   useEffect(() => {
     void carregarTudo();
@@ -337,8 +420,10 @@ export function LojistaPage() {
           : Number((novoPreco * 0.85).toFixed(2))
         : null;
 
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const nextWeekStr = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const hoje = new Date();
+      const todayStr = hoje.toISOString().slice(0, 10);
+      hoje.setDate(hoje.getDate() + 7);
+      const nextWeekStr = hoje.toISOString().slice(0, 10);
 
       await api(`/estoque/${item.id}`, {
         method: 'PUT',
@@ -552,11 +637,13 @@ export function LojistaPage() {
           enderecoCompleto: pfEndereco.trim(),
           latitude: loja.latitude,
           longitude: loja.longitude,
+          fotoPerfilUrl: pfFotoPerfilUrl.trim() || null,
           horariosFuncionamento: JSON.stringify(pfHorarios),
           galeriaFotosUrls: pfFotos.map((f) => f.url),
         }),
       });
       setLoja(updated);
+      setPfFotoPerfilUrl(updated.fotoPerfilUrl || '');
       setEditandoPerfil(false);
       notifySuccess('Perfil da loja atualizado com sucesso.');
     } catch (err) {
@@ -628,7 +715,7 @@ export function LojistaPage() {
       ...item,
       posicao: item.posicao ?? idx + 1,
       compatibilidade: item.compatibilidadeResumo || item.compatibilidade || 'Universal',
-      buscasUltimos7Dias: item.totalBuscas7d ?? item.buscasUltimos7Dias ?? 140,
+      buscasUltimos7Dias: item.totalBuscas7d ?? item.buscasUltimos7Dias ?? 0,
       quantidadeMeuEstoque: item.quantidadeEstoqueLoja ?? item.quantidadeMeuEstoque ?? 0,
     }));
   }, [dashboard]);
@@ -645,6 +732,85 @@ export function LojistaPage() {
       return true;
     });
   }, [maisProcuradosNormalizados, buscaProcurados, filtroProcuradosTab]);
+
+  const ofertasExpirandoEmBreve = useMemo(() => {
+    const agora = new Date();
+    return ofertasAtivasList.filter((item) => {
+      if (!item.dataFimPromocao) return false;
+      const fim = new Date(item.dataFimPromocao);
+      const diffHoras = (fim.getTime() - agora.getTime()) / (1000 * 60 * 60);
+      return diffHoras >= 0 && diffHoras <= 48;
+    }).length;
+  }, [ofertasAtivasList]);
+
+  const totalBuscasRegiao = useMemo(() => {
+    return maisProcuradosNormalizados.reduce((acc, i) => acc + (i.buscasUltimos7Dias || 0), 0);
+  }, [maisProcuradosNormalizados]);
+
+  const crescimentoMedioRegiao = useMemo(() => {
+    if (maisProcuradosNormalizados.length === 0) return 0;
+    const soma = maisProcuradosNormalizados.reduce((acc, i) => acc + (i.crescimentoPercentual || 0), 0);
+    return Math.round(soma / maisProcuradosNormalizados.length);
+  }, [maisProcuradosNormalizados]);
+
+  const motoMaisProcurada = useMemo(() => {
+    if (maisProcuradosNormalizados.length === 0) {
+      return { nome: 'Diversos Modelos', percentual: 0 };
+    }
+    const contagem: Record<string, number> = {};
+    for (const item of maisProcuradosNormalizados) {
+      const comp = item.compatibilidade || '';
+      const modelos = comp.split(',').map((c) => c.trim()).filter(Boolean);
+      for (const m of modelos) {
+        const nomeSimplificado = m.replace(/\s*\([^)]*\)/g, '').trim();
+        if (nomeSimplificado && nomeSimplificado.toLowerCase() !== 'universal') {
+          contagem[nomeSimplificado] = (contagem[nomeSimplificado] || 0) + 1;
+        }
+      }
+    }
+    const entries = Object.entries(contagem);
+    if (entries.length === 0) {
+      return { nome: 'Universal / Multimarcas', percentual: 100 };
+    }
+    entries.sort((a, b) => b[1] - a[1]);
+    const [topNome, topQtd] = entries[0];
+    const percentual = Math.round((topQtd / maisProcuradosNormalizados.length) * 100);
+    return { nome: topNome, percentual };
+  }, [maisProcuradosNormalizados]);
+
+  const horarioPicoCalculado = useMemo(() => {
+    const diaSegSex =
+      pfHorarios.find((h) => !h.fechado && h.dia.toLowerCase().includes('seg')) ||
+      pfHorarios.find((h) => !h.fechado);
+    if (diaSegSex) {
+      const abreH = diaSegSex.abre.slice(0, 2);
+      const fechaH = diaSegSex.fecha.slice(0, 2);
+      return { faixa: `${abreH}h - ${fechaH}h`, dias: 'Seg a Sex' };
+    }
+    return { faixa: '08h - 18h', dias: 'Comercial' };
+  }, [pfHorarios]);
+
+  const statusLojaAtual = useMemo(() => {
+    const agora = new Date();
+    const diaSemanaIndex = agora.getDay();
+    const diasNomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const diaHoje = diasNomes[diaSemanaIndex];
+    const configHoje = pfHorarios.find(
+      (h) => h.dia.toLowerCase().trim() === diaHoje.toLowerCase().trim(),
+    );
+    if (!configHoje || configHoje.fechado) return { aberto: false, label: 'Fechado Agora' };
+
+    const [horaAbre, minAbre] = configHoje.abre.split(':').map(Number);
+    const [horaFecha, minFecha] = configHoje.fecha.split(':').map(Number);
+    const minutosAtual = agora.getHours() * 60 + agora.getMinutes();
+    const minutosAbre = (horaAbre || 0) * 60 + (minAbre || 0);
+    const minutosFecha = (horaFecha || 0) * 60 + (minFecha || 0);
+
+    if (minutosAtual >= minutosAbre && minutosAtual < minutosFecha) {
+      return { aberto: true, label: `Aberto Agora (fecha às ${configHoje.fecha})` };
+    }
+    return { aberto: false, label: `Fechado Agora (abre às ${configHoje.abre})` };
+  }, [pfHorarios]);
 
   if (loading) {
     return (
@@ -671,6 +837,61 @@ export function LojistaPage() {
           }}
         >
           GESTÃO LOJISTA
+        </div>
+
+        {/* Identidade da Loja na Sidebar */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 12px 14px',
+            marginBottom: 8,
+            borderBottom: '1px solid #e2e8f0',
+          }}
+        >
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 8,
+              background: '#f1f5f9',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
+              <img
+                src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
+                alt={loja?.nomeFantasia || 'Loja'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <Store size={18} color="#006375" />
+            )}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                color: '#0f172a',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={loja?.nomeFantasia || 'Minha Loja'}
+            >
+              {loja?.nomeFantasia || 'Minha Loja'}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+              Loja Oficial
+            </div>
+          </div>
         </div>
 
         <div className="lojista-sidebar-nav-list">
@@ -796,7 +1017,7 @@ export function LojistaPage() {
                   <Radar size={16} color="#006375" />
                 </div>
                 <div style={{ fontSize: '2.1rem', fontWeight: 800, marginTop: 10, color: '#006375', lineHeight: 1 }}>
-                  {dashboard?.buscasRadar24h ?? 148}
+                  {dashboard?.buscasRadar24h ?? ((dashboard?.totalVisualizacoesOfertas ?? 0) + (dashboard?.totalCliquesOfertas ?? 0))}
                 </div>
               </div>
 
@@ -1748,10 +1969,10 @@ export function LojistaPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
                   <span style={{ fontSize: '1.9rem', fontWeight: 800, color: '#006375' }}>
-                    {ofertasAtivasList.reduce((acc, i) => acc + (i.visualizacoes || 140), 0)}
+                    {dashboard?.totalVisualizacoesOfertas ?? ofertasAtivasList.reduce((acc, i) => acc + (i.visualizacoes || 0), 0)}
                   </span>
                   <span style={{ fontSize: '0.72rem', background: '#c8e6f0', color: '#006375', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
-                    +12%
+                    Total Real
                   </span>
                 </div>
               </div>
@@ -1763,10 +1984,10 @@ export function LojistaPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
                   <span style={{ fontSize: '1.9rem', fontWeight: 800, color: '#0f172a' }}>
-                    {ofertasAtivasList.reduce((acc, i) => acc + (i.cliques || 36), 0)}
+                    {dashboard?.totalCliquesOfertas ?? ofertasAtivasList.reduce((acc, i) => acc + (i.cliques || 0), 0)}
                   </span>
                   <span style={{ fontSize: '0.72rem', background: '#c8e6f0', color: '#006375', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
-                    +18%
+                    Conversões
                   </span>
                 </div>
               </div>
@@ -1778,7 +1999,7 @@ export function LojistaPage() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
                   <span style={{ fontSize: '1.9rem', fontWeight: 800, color: '#b91c1c' }}>
-                    {Math.min(2, ofertasAtivasList.length)}
+                    {ofertasExpirandoEmBreve}
                   </span>
                   <span style={{ fontSize: '0.72rem', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
                     &lt; 48h
@@ -2473,10 +2694,14 @@ export function LojistaPage() {
                   <Search size={15} color="#006375" />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
-                  <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a' }}>3.420</span>
-                  <span style={{ fontSize: '0.72rem', background: '#c8e6f0', color: '#006375', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
-                    +15%
+                  <span style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f172a' }}>
+                    {totalBuscasRegiao.toLocaleString('pt-BR')}
                   </span>
+                  {crescimentoMedioRegiao > 0 && (
+                    <span style={{ fontSize: '0.72rem', background: '#c8e6f0', color: '#006375', padding: '2px 8px', borderRadius: 999, fontWeight: 700 }}>
+                      +{crescimentoMedioRegiao}%
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2485,11 +2710,15 @@ export function LojistaPage() {
                   <span>Motos Mais Buscadas</span>
                   <TrendingUp size={15} color="#64748b" />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
-                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#006375' }}>Honda CG 160</span>
-                  <span style={{ fontSize: '0.72rem', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-                    28%
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10, minWidth: 0 }}>
+                  <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#006375', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={motoMaisProcurada.nome}>
+                    {motoMaisProcurada.nome}
                   </span>
+                  {motoMaisProcurada.percentual > 0 && (
+                    <span style={{ fontSize: '0.72rem', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: 6, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', flexShrink: 0 }}>
+                      {motoMaisProcurada.percentual}%
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -2499,9 +2728,11 @@ export function LojistaPage() {
                   <Clock size={15} color="#64748b" />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 10 }}>
-                  <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>14h - 18h</span>
+                  <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>
+                    {horarioPicoCalculado.faixa}
+                  </span>
                   <span style={{ fontSize: '0.72rem', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
-                    Seg a Sex
+                    {horarioPicoCalculado.dias}
                   </span>
                 </div>
               </div>
@@ -2926,28 +3157,99 @@ export function LojistaPage() {
               {/* Card Principal da Loja */}
               <div className="card" style={{ padding: 28, border: '1px solid #e2e8f0', boxShadow: 'none', minWidth: 0 }}>
                 <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap', paddingBottom: 24, borderBottom: '1px solid #e2e8f0' }}>
-                  <div
-                    style={{
-                      width: 96,
-                      height: 96,
-                      borderRadius: 14,
-                      background: '#f1f5f9',
-                      border: '1px solid #cbd5e1',
-                      color: '#006375',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Store size={34} strokeWidth={1.8} />
-                    <span style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', color: '#475569', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-                      OFICIAL
-                    </span>
+                  {/* Foto de Perfil / Logo da Loja */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <div
+                      style={{
+                        width: 96,
+                        height: 96,
+                        borderRadius: 14,
+                        background: '#f1f5f9',
+                        border: '1px solid #cbd5e1',
+                        color: '#006375',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
+                        <img
+                          src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
+                          alt={loja?.nomeFantasia || 'Foto de Perfil'}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <Store size={34} strokeWidth={1.8} />
+                          <span style={{ fontSize: '0.62rem', fontWeight: 800, letterSpacing: '0.06em', color: '#475569', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                            OFICIAL
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {editandoPerfil && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: '#006375',
+                            color: '#ffffff',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                          title="Fazer upload de imagem do computador"
+                        >
+                          <Upload size={12} />
+                          <span>Upload</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFotoPerfilFileChange}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+
+                        {(pfFotoPerfilUrl || loja?.fotoPerfilUrl) && (
+                          <button
+                            type="button"
+                            onClick={() => setPfFotoPerfilUrl('')}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              background: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fca5a5',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                            title="Excluir foto de perfil"
+                          >
+                            <Trash2 size={12} />
+                            <span>Excluir</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ minWidth: 0 }}>
+
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{loja?.nomeFantasia || user?.nome}</h2>
                     <div style={{ color: '#64748b', fontSize: '0.84rem', marginTop: 4, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
                       CNPJ: {loja?.cnpj || '12.345.678/0001-90'}
@@ -2992,6 +3294,14 @@ export function LojistaPage() {
                         required
                         value={pfNomeFantasia}
                         onChange={(e) => setPfNomeFantasia(e.target.value)}
+                      />
+                    </Field>
+                    <Field label="URL da Foto de Perfil (ou use o botão de Upload acima)">
+                      <TextInput
+                        type="url"
+                        placeholder="https://exemplo.com/foto-loja.jpg"
+                        value={pfFotoPerfilUrl}
+                        onChange={(e) => setPfFotoPerfilUrl(e.target.value)}
                       />
                     </Field>
                     <div className="lojista-form-grid-2">
@@ -3066,6 +3376,37 @@ export function LojistaPage() {
                   <Clock size={18} color="#64748b" />
                 </div>
 
+                {editandoPerfil && (
+                  <div style={{ marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPfHorarios([
+                          { dia: 'Segunda', abre: '08:00', fecha: '18:00', fechado: false },
+                          { dia: 'Terça', abre: '08:00', fecha: '18:00', fechado: false },
+                          { dia: 'Quarta', abre: '08:00', fecha: '18:00', fechado: false },
+                          { dia: 'Quinta', abre: '08:00', fecha: '18:00', fechado: false },
+                          { dia: 'Sexta', abre: '08:00', fecha: '18:00', fechado: false },
+                          { dia: 'Sábado', abre: '08:00', fecha: '13:00', fechado: false },
+                          { dia: 'Domingo', abre: '00:00', fecha: '00:00', fechado: true },
+                        ]);
+                      }}
+                      style={{
+                        background: '#f1f5f9',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 6,
+                        padding: '4px 10px',
+                        fontSize: '0.72rem',
+                        color: '#006375',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Preencher Padrão Comercial (08h-18h / Sáb até 13h)
+                    </button>
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {pfHorarios.map((h, idx) => (
                     <div
@@ -3075,22 +3416,70 @@ export function LojistaPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center',
                         fontSize: '0.86rem',
+                        flexWrap: 'wrap',
+                        gap: 8,
                       }}
                     >
-                      <span style={{ color: '#475569' }}>{h.dia}</span>
+                      <span style={{ color: '#475569', minWidth: 65, fontWeight: 500 }}>{h.dia}</span>
                       {editandoPerfil ? (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem' }}>
-                          <input
-                            type="checkbox"
-                            checked={!h.fechado}
-                            onChange={(e) => {
-                              const next = [...pfHorarios];
-                              next[idx] = { ...h, fechado: !e.target.checked };
-                              setPfHorarios(next);
-                            }}
-                          />
-                          {h.fechado ? 'Fechado' : `${h.abre} - ${h.fecha}`}
-                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={!h.fechado}
+                              onChange={(e) => {
+                                const next = [...pfHorarios];
+                                next[idx] = { ...h, fechado: !e.target.checked };
+                                setPfHorarios(next);
+                              }}
+                            />
+                            <span style={{ color: h.fechado ? '#94a3b8' : '#006375', fontWeight: 600 }}>
+                              {h.fechado ? 'Fechado' : 'Aberto'}
+                            </span>
+                          </label>
+
+                          {!h.fechado && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <input
+                                type="time"
+                                value={h.abre}
+                                onChange={(e) => {
+                                  const next = [...pfHorarios];
+                                  next[idx] = { ...h, abre: e.target.value };
+                                  setPfHorarios(next);
+                                }}
+                                style={{
+                                  padding: '3px 6px',
+                                  fontSize: '0.8rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  color: '#0f172a',
+                                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                }}
+                              />
+                              <span style={{ color: '#64748b', fontSize: '0.75rem' }}>às</span>
+                              <input
+                                type="time"
+                                value={h.fecha}
+                                onChange={(e) => {
+                                  const next = [...pfHorarios];
+                                  next[idx] = { ...h, fecha: e.target.value };
+                                  setPfHorarios(next);
+                                }}
+                                style={{
+                                  padding: '3px 6px',
+                                  fontSize: '0.8rem',
+                                  borderRadius: 6,
+                                  border: '1px solid #cbd5e1',
+                                  background: '#ffffff',
+                                  color: '#0f172a',
+                                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       ) : h.fechado ? (
                         <strong style={{ color: '#b91c1c', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>Fechado</strong>
                       ) : (
@@ -3119,8 +3508,8 @@ export function LojistaPage() {
                     style={{
                       padding: '4px 10px',
                       borderRadius: 999,
-                      background: '#c8e6f0',
-                      color: '#006375',
+                      background: statusLojaAtual.aberto ? '#c8e6f0' : '#fee2e2',
+                      color: statusLojaAtual.aberto ? '#006375' : '#b91c1c',
                       fontSize: '0.75rem',
                       fontWeight: 800,
                       display: 'inline-flex',
@@ -3128,8 +3517,15 @@ export function LojistaPage() {
                       gap: 6,
                     }}
                   >
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#006375' }} />
-                    Aberto Agora
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: '50%',
+                        background: statusLojaAtual.aberto ? '#006375' : '#dc2626',
+                      }}
+                    />
+                    {statusLojaAtual.label}
                   </span>
                 </div>
               </div>
