@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
 import { ArrowLeftIcon, RadarLogo, SearchIcon } from './ui';
@@ -12,12 +18,51 @@ export function Layout() {
 
   const [topSearch, setTopSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
   const isHome = location.pathname === '/';
-  const isLojistaPanel = location.pathname.startsWith('/lojista');
+  const isLojistaPanel =
+    location.pathname === '/lojista' || location.pathname.startsWith('/lojista/');
   const isFullWidth = isHome || isLojistaPanel;
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/cadastro';
+  const isAuthPage =
+    location.pathname === '/login' || location.pathname === '/cadastro';
   const isLojistaUser = user?.tipoUsuario === 'LOJISTA';
+
+  // Fechar dropdown ao navegar para outra rota
+  useEffect(() => {
+    setShowUserDropdown(false);
+  }, [location.pathname]);
+
+  // Fechar dropdown ao clicar fora ou pressionar Escape (mouse e touch)
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
+      if (
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowUserDropdown(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowUserDropdown(false);
+        triggerButtonRef.current?.focus();
+      }
+    }
+
+    if (showUserDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showUserDropdown]);
 
   function handleLogout() {
     logout();
@@ -67,20 +112,32 @@ export function Layout() {
         {/* Navegação Principal */}
         {!isAuthPage && (
           <nav className="nav" aria-label="Navegação Principal">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavLink
+              to="/"
+              end
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
               Explorar
             </NavLink>
-            <NavLink to="/lojas" className={({ isActive }) => (isActive ? 'active' : '')}>
+            <NavLink
+              to="/lojas"
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
               Lojas
             </NavLink>
             <NavLink
               to="/busca?apenasPromocoes=true"
-              className={location.search.includes('apenasPromocoes=true') ? 'active' : ''}
+              className={
+                location.search.includes('apenasPromocoes=true') ? 'active' : ''
+              }
             >
               Promoções
             </NavLink>
             {isLojistaUser && (
-              <NavLink to="/lojista" className={({ isActive }) => (isActive ? 'active' : '')}>
+              <NavLink
+                to="/lojista"
+                className={({ isActive }) => (isActive ? 'active' : '')}
+              >
                 Dashboard
               </NavLink>
             )}
@@ -89,14 +146,21 @@ export function Layout() {
 
         {/* Barra de Busca rápida no centro/direita da topbar */}
         {!isHome && !isAuthPage && (
-          <form onSubmit={handleTopSearchSubmit} className="topbar-search-form" role="search" style={{ marginLeft: 'auto', marginRight: 12 }}>
+          <form
+            onSubmit={handleTopSearchSubmit}
+            className="topbar-search-form"
+            role="search"
+            style={{ marginLeft: 'auto', marginRight: 12 }}
+          >
             <span className="topbar-search-icon" aria-hidden="true">
               <SearchIcon size={16} />
             </span>
             <input
               type="search"
               className="topbar-search-input"
-              placeholder={isLojistaPanel ? 'Buscar no inventário...' : 'Buscar peças...'}
+              placeholder={
+                isLojistaPanel ? 'Buscar no inventário...' : 'Buscar peças...'
+              }
               value={topSearch}
               onChange={(e) => setTopSearch(e.target.value)}
               aria-label="Buscar peças rapidamente"
@@ -105,7 +169,10 @@ export function Layout() {
         )}
 
         {/* Ações do Usuário (Painel Lojista / Garagem + Perfil) */}
-        <div className="userbox" style={{ marginLeft: isHome || isAuthPage ? 'auto' : 0 }}>
+        <div
+          className="userbox"
+          style={{ marginLeft: isHome || isAuthPage ? 'auto' : 0 }}
+        >
           {!isAuthPage && !isLojistaUser && (
             <Link className="btn-garage-top" to="/garagem">
               Garagem Virtual
@@ -113,29 +180,20 @@ export function Layout() {
           )}
 
           {user ? (
-            <div style={{ position: 'relative' }}>
+            <div ref={userDropdownRef} style={{ position: 'relative' }}>
               <button
+                ref={triggerButtonRef}
                 type="button"
-                className={isLojistaUser ? 'btn btn-ghost' : 'avatar-badge'}
+                className={
+                  isLojistaUser
+                    ? `lojista-badge-btn${showUserDropdown ? ' open' : ''}`
+                    : `avatar-badge${showUserDropdown ? ' open' : ''}`
+                }
                 onClick={() => setShowUserDropdown((v) => !v)}
                 title={user.nome}
                 aria-label="Menu do Usuário"
-                style={
-                  isLojistaUser
-                    ? {
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '6px 12px',
-                        borderRadius: 999,
-                        border: '1px solid var(--border)',
-                        background: '#ffffff',
-                        color: 'var(--primary)',
-                        fontWeight: 600,
-                        fontSize: '0.84rem',
-                      }
-                    : undefined
-                }
+                aria-expanded={showUserDropdown}
+                aria-haspopup="true"
               >
                 {isLojistaUser ? (
                   <>
@@ -143,85 +201,59 @@ export function Layout() {
                     <span>{user.nome}</span>
                   </>
                 ) : (
-                  user.nome.slice(0, 2).toUpperCase()
+                  (user.nome || 'U').slice(0, 2).toUpperCase()
                 )}
               </button>
 
               {showUserDropdown && (
                 <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: 'calc(100% + 8px)',
-                    background: '#ffffff',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    boxShadow: 'var(--shadow-lg)',
-                    minWidth: 190,
-                    padding: '8px 0',
-                    zIndex: 1100,
-                  }}
+                  className="user-dropdown-menu"
+                  role="menu"
+                  aria-label="Opções do usuário"
                 >
-                  <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)' }}>
-                    <strong style={{ display: 'block', fontSize: '0.88rem' }}>{user.nome}</strong>
-                    <small style={{ color: 'var(--text-muted)' }}>{user.email}</small>
+                  <div className="user-dropdown-header">
+                    <strong>{user.nome}</strong>
+                    <small>{user.email}</small>
                   </div>
-                  {isLojistaUser && (
-                    <Link
-                      to="/lojista"
-                      style={{
-                        display: 'block',
-                        padding: '8px 16px',
-                        color: 'var(--primary)',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
-                        textDecoration: 'none',
-                      }}
+                  <div className="user-dropdown-body">
+                    {isLojistaUser && (
+                      <NavLink
+                        to="/lojista"
+                        role="menuitem"
+                        className={({ isActive }) =>
+                          `user-dropdown-item${isActive ? ' active' : ''}`
+                        }
+                        onClick={() => setShowUserDropdown(false)}
+                      >
+                        Painel Lojista
+                      </NavLink>
+                    )}
+                    <NavLink
+                      to="/garagem"
+                      role="menuitem"
+                      className={({ isActive }) =>
+                        `user-dropdown-item${isActive ? ' active' : ''}`
+                      }
                       onClick={() => setShowUserDropdown(false)}
                     >
-                      Painel Lojista
-                    </Link>
-                  )}
-                  <Link
-                    to="/garagem"
-                    style={{
-                      display: 'block',
-                      padding: '8px 16px',
-                      color: 'var(--text)',
-                      fontSize: '0.85rem',
-                      textDecoration: 'none',
-                    }}
-                    onClick={() => setShowUserDropdown(false)}
-                  >
-                    Minha Garagem
-                  </Link>
-                  <Link
-                    to="/perfil"
-                    style={{
-                      display: 'block',
-                      padding: '8px 16px',
-                      color: 'var(--text)',
-                      fontSize: '0.85rem',
-                      textDecoration: 'none',
-                    }}
-                    onClick={() => setShowUserDropdown(false)}
-                  >
-                    Gerenciar Conta
-                  </Link>
+                      Minha Garagem
+                    </NavLink>
+                    <NavLink
+                      to="/perfil"
+                      role="menuitem"
+                      className={({ isActive }) =>
+                        `user-dropdown-item${isActive ? ' active' : ''}`
+                      }
+                      onClick={() => setShowUserDropdown(false)}
+                    >
+                      Gerenciar Conta
+                    </NavLink>
+                  </div>
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={handleLogout}
-                    style={{
-                      width: '100%',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      padding: '8px 16px',
-                      color: 'var(--accent-red)',
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      borderTop: '1px solid var(--border)',
-                    }}
+                    className="user-dropdown-logout"
                   >
                     Sair da Conta
                   </button>
@@ -230,7 +262,11 @@ export function Layout() {
             </div>
           ) : (
             !isAuthPage && (
-              <Link className="btn btn-outline" to="/login" style={{ padding: '7px 14px', fontSize: '0.8rem' }}>
+              <Link
+                className="btn btn-outline"
+                to="/login"
+                style={{ padding: '7px 14px', fontSize: '0.8rem' }}
+              >
                 Entrar
               </Link>
             )
@@ -240,7 +276,13 @@ export function Layout() {
 
       {/* Conteúdo da Página: full width se for a tela de Explorar ou Painel Lojista, ou content-wrap com margem nas outras telas */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {isFullWidth ? <Outlet /> : <div className="content-wrap"><Outlet /></div>}
+        {isFullWidth ? (
+          <Outlet />
+        ) : (
+          <div className="content-wrap">
+            <Outlet />
+          </div>
+        )}
       </main>
     </div>
   );
