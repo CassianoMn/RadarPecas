@@ -196,7 +196,7 @@ public class LojaService : ILojaService
             : request.HorariosFuncionamento.Trim();
         var horariosJson = rawHorarios.StartsWith("{") || rawHorarios.StartsWith("[") || rawHorarios.StartsWith("\"")
             ? rawHorarios
-            : System.Text.Json.JsonSerializer.Serialize(new { resumo = rawHorarios });
+            : System.Text.Json.JsonSerializer.Serialize(rawHorarios);
 
         var loja = new Loja
         {
@@ -273,9 +273,9 @@ public class LojaService : ILojaService
             var rawH = request.HorariosFuncionamento.Trim();
             loja.HorariosFuncionamento = rawH.StartsWith("{") || rawH.StartsWith("[") || rawH.StartsWith("\"")
                 ? rawH
-                : System.Text.Json.JsonSerializer.Serialize(new { resumo = rawH });
+                : System.Text.Json.JsonSerializer.Serialize(rawH);
         }
-        loja.FotoPerfilUrl = request.FotoPerfilUrl;
+        loja.FotoPerfilUrl = string.IsNullOrWhiteSpace(request.FotoPerfilUrl) ? null : request.FotoPerfilUrl.Trim();
         loja.GaleriaFotosUrls = request.GaleriaFotosUrls;
         if (request.Ativa.HasValue) loja.Ativa = request.Ativa.Value;
 
@@ -350,6 +350,20 @@ public class LojaService : ILojaService
             .Take(5)
             .ToList();
 
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
+        var limite24h = hoje.AddDays(-1);
+
+        // Visualizações e cliques reais das ofertas da loja nas últimas 24h
+        var stats24h = loja.Estoques
+            .SelectMany(e => e.Estatisticas)
+            .Where(s => s.DataRegistro >= limite24h)
+            .ToList();
+        var buscas24h = stats24h.Sum(s => s.Visualizacoes + s.Cliques);
+        if (buscas24h == 0)
+        {
+            buscas24h = totalVisualizacoes + totalCliques;
+        }
+
         // Peças mais procuradas no Radar (cruzadas com o estoque da loja atual)
         var catalogoPecas = await _context.Pecas
             .AsNoTracking()
@@ -364,11 +378,10 @@ public class LojaService : ILojaService
         var maisProcuradosRegiao = catalogoPecas
             .Select((p, idx) =>
             {
-                var viewsGlobais = p.Estoques.SelectMany(e => e.Estatisticas).Sum(s => s.Visualizacoes);
-                var cliquesGlobais = p.Estoques.SelectMany(e => e.Estatisticas).Sum(s => s.Cliques);
-                // Base de volume regional somada às interações reais registradas no banco
-                var volumeBase = Math.Max(42, 340 - ((p.Id * 29) % 260)) + (viewsGlobais * 3) + (cliquesGlobais * 7);
-                var crescimento = 8 + ((p.Id * 7) % 24);
+                var statsPeca = p.Estoques.SelectMany(e => e.Estatisticas).ToList();
+                var viewsGlobais = statsPeca.Sum(s => s.Visualizacoes);
+                var cliquesGlobais = statsPeca.Sum(s => s.Cliques);
+                var interacoesReais = viewsGlobais + cliquesGlobais;
 
                 var comps = p.Compatibilidades
                     .Where(c => c.ModeloMoto != null)
@@ -378,13 +391,17 @@ public class LojaService : ILojaService
 
                 estoquePorPeca.TryGetValue(p.Id, out var estLoja);
 
+                var crescimento = viewsGlobais > 0 
+                    ? Math.Min(100, (int)Math.Round((double)cliquesGlobais / viewsGlobais * 100))
+                    : 0;
+
                 return new ItemMaisProcuradoRegiao
                 {
                     PecaId = p.Id,
                     NomePeca = p.Nome,
                     Categoria = p.Categoria,
                     CompatibilidadeResumo = comps.Count > 0 ? string.Join(", ", comps) : "Universal",
-                    TotalBuscas7d = volumeBase,
+                    TotalBuscas7d = interacoesReais,
                     CrescimentoPercentual = crescimento,
                     QuantidadeEstoqueLoja = estLoja?.QuantidadeEstoque ?? 0,
                     EstoqueIdLoja = estLoja?.Id,
@@ -392,10 +409,9 @@ public class LojaService : ILojaService
                 };
             })
             .OrderByDescending(x => x.TotalBuscas7d)
+            .ThenBy(x => x.NomePeca)
             .Take(12)
             .ToList();
-
-        var buscas24h = Math.Max(128, (totalVisualizacoes * 2) + (maisProcuradosRegiao.Sum(m => m.TotalBuscas7d) / 5));
 
         var dashboard = new DashboardLojistaResponse
         {
