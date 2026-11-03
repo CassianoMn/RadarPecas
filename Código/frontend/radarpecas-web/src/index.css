@@ -1061,9 +1061,8 @@ a {
 
 /* Marcadores SVG customizados no Leaflet */
 .leaflet-custom-marker-store {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent !important;
+  border: none !important;
 }
 
 /* ========================================================
