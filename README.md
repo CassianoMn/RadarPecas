@@ -208,8 +208,26 @@ O banco é pré-carregado com usuários demonstrativos e dados reais de oficinas
 | Perfil | E-mail | Senha | Descrição |
 |---|---|---|---|
 | **Motociclista** | `motociclista@radarpecas.com.br` | `Moto#2026` | Lucas Oliveira (garagem com Honda CG 160 e Yamaha FZ25) |
-| **Lojista 1** | `lojista@gmail.com` | `Loja#2026` | Carlos Alberto — Radar Motos & Peças Central (Centro Aracaju) |
-| **Lojista 2** | `mariana@gmail.com` | `Loja#2026` | Mariana Costa — MotoPower Peças & Oficina (Siqueira Campos) |
+| **Lojista (Itabaiana 1)** | `everton@itabaianamotos.com.br` | `Loja#2026` | Everton Lima — Itabaiana Motos Honda (Marianga, Itabaiana) |
+| **Lojista (Itabaiana 2)** | `halley@halleymotopecas.com.br` | `Loja#2026` | Halley Santos — Halley Moto Peças (Marianga, Itabaiana) |
+| **Lojista (Itabaiana 3)** | `osias@osiasmotopecas.com.br` | `Loja#2026` | Osias Mendonça — Osias Moto Peças (Bananeiras, Itabaiana) |
+| **Lojista (Itabaiana 4)** | `marcos@joyamotopecas.com.br` | `Loja#2026` | Marcos Joya — Joya Moto Peças (Mamede Paes Mendonça, Itabaiana) |
+| **Lojista (Itabaiana 5)** | `rafael@rafaelluzmotopecas.com.br` | `Loja#2026` | Rafael Luz — Motopeças Rafael Luz (Centro, Itabaiana) |
+| **Lojista (Itabaiana 6)** | `luis@luismotopecas.com.br` | `Loja#2026` | Luís Fernando — Luís Moto Peças (Centro, Itabaiana) |
+| **Lojista (Malhador)** | `marcelo@marcelomotopecas.com.br` | `Loja#2026` | Marcelo Santos — Marcelo Moto Peças (Centro, Malhador) |
+| **Lojista (Ribeirópolis 1)** | `tadeu@tadeumotopecas.com.br` | `Loja#2026` | Tadeu Teixeira — Tadeu Moto Peças (Centro, Ribeirópolis) |
+| **Lojista (Ribeirópolis 2)** | `marcos@marcossouzamotos.com.br` | `Loja#2026` | Marcos Souza — Motopeças Marcos Souza (Centro, Ribeirópolis) |
+| **Lojista (Moita Bonita 1)** | `yuri@yurimotopecas.com.br` | `Loja#2026` | Yuri Santana — Yuri Moto Peças (Centro, Moita Bonita) |
+| **Lojista (Moita Bonita 2)** | `nene@nenemotopecas.com.br` | `Loja#2026` | José Carlos Nenê — Nenê Moto Peças (Centro, Moita Bonita) |
+| **Lojista (Campo do Brito 1)** | `britense@britensemotopecas.com.br` | `Loja#2026` | Claudemir Britense — Moto Peças Britense (Centro, Campo do Brito) |
+| **Lojista (Campo do Brito 2)** | `victor@victorsantosmotos.com.br` | `Loja#2026` | Victor Santos — Oficina & Peças Victor Santos (Centro, Campo do Brito) |
+| **Lojista (Lagarto 1)** | `geraldo@geralmotopecas.com.br` | `Loja#2026` | Geraldo Andrade — Geral Moto Peças (Centro, Lagarto) |
+| **Lojista (Lagarto 2)** | `neto@netomotos.com.br` | `Loja#2026` | José Neto — Neto Motos (Novo Horizonte, Lagarto) |
+| **Lojista (Lagarto 3)** | `marcio@pimentinhamotopecas.com.br` | `Loja#2026` | Márcio Pimentinha — Pimentinha Moto Peças (Centro, Lagarto) |
+| **Lojista (Aracaju 1)** | `lojista@gmail.com` | `Loja#2026` | Carlos Alberto — Radar Motos & Peças Central (Centro, Aracaju) |
+| **Lojista (Aracaju 2)** | `mariana@gmail.com` | `Loja#2026` | Mariana Costa — MotoPower Peças & Oficina (Siqueira Campos, Aracaju) |
+| **Lojista (Aracaju 3)** | `jorge@jcmotos.com.br` | `Loja#2026` | Jorge Cavalcante — J&C Motos e Peças (Siqueira Campos, Aracaju) |
+| **Lojista (Aracaju 4)** | `gilvan@ciclomotosaju.com.br` | `Loja#2026` | Gilvan Matos — Ciclo Motos Peças (Siqueira Campos, Aracaju) |
 
 ---
 

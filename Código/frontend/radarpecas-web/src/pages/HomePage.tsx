@@ -54,6 +54,7 @@ export function HomePage() {
       if (lat != null && lon != null) {
         query.set('userLat', lat.toString());
         query.set('userLon', lon.toString());
+        query.set('raioKm', '15');
       }
       const queryString = query.toString();
       const lojasData = await api<Loja[]>(queryString ? `/lojas?${queryString}` : '/lojas');
@@ -95,10 +96,15 @@ export function HomePage() {
     if (!mapContainerRef.current) return;
     if (mapRef.current) return;
 
+    const storedCoords = getStoredUserCoords();
+    const initialCenter: [number, number] = storedCoords
+      ? [storedCoords.lat, storedCoords.lng]
+      : [-10.6856, -37.4270]; // Itabaiana - SE (cidade foco prioritária)
+
     const map = L.map(mapContainerRef.current, {
       zoomControl: false,
       attributionControl: true,
-    }).setView([-23.553, -46.642], 14);
+    }).setView(initialCenter, 14);
 
     // Tiles oficiais OpenStreetMap (100% gratuitos e abertos, sem necessidade de API Key)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -125,18 +131,24 @@ export function HomePage() {
       iconAnchor: [16, 16],
     });
 
-    const userMarker = L.marker([-23.553, -46.642], { icon: userIcon }).addTo(map);
-    userMarkerRef.current = userMarker;
+    if (storedCoords) {
+      const userMarker = L.marker([storedCoords.lat, storedCoords.lng], { icon: userIcon }).addTo(map);
+      userMarkerRef.current = userMarker;
+    }
 
     // Obter posição real do navegador
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          if (!mapRef.current || !userMarkerRef.current) return;
+          if (!mapRef.current) return;
           try {
             const lat = pos.coords.latitude;
             const lng = pos.coords.longitude;
-            userMarkerRef.current.setLatLng([lat, lng]);
+            if (!userMarkerRef.current) {
+              userMarkerRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(mapRef.current);
+            } else {
+              userMarkerRef.current.setLatLng([lat, lng]);
+            }
             mapRef.current.setView([lat, lng], 14);
           } catch {
             // Ignora se o mapa estiver desmontado ou inicializando
@@ -170,17 +182,20 @@ export function HomePage() {
       const storePinIcon = L.divIcon({
         className: 'leaflet-custom-marker-store',
         html: `
-          <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: pointer;">
-            <div style="background: #ffffff; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #006375; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; margin-bottom: 3px; white-space: nowrap;">
-              ${escapeHtml(loja.nomeFantasia.split(' ')[0])}
+          <div style="position: relative; width: 120px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; cursor: pointer; pointer-events: auto;">
+            <div style="background: #ffffff; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; color: #006375; box-shadow: 0 2px 6px rgba(0,0,0,0.18); border: 1px solid #cbd5e1; margin-bottom: 2px; white-space: nowrap; max-width: 116px; overflow: hidden; text-overflow: ellipsis; line-height: 16px; text-align: center;">
+              ${escapeHtml(loja.nomeFantasia.split(' - ')[0].split(' / ')[0])}
             </div>
-            <div style="width: 38px; height: 38px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: #0284c7; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.25); border: 2px solid #ffffff;">
-              <span style="transform: rotate(45deg); color: #ffffff; font-size: 16px;">⚙</span>
-            </div>
+            <svg width="30" height="42" viewBox="0 0 30 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 3px 6px rgba(0,0,0,0.32));">
+              <path d="M15 0C6.716 0 0 6.716 0 15C0 26.25 15 42 15 42C15 42 30 26.25 30 15C30 6.716 23.284 0 15 0Z" fill="#0284c7" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="15" cy="15" r="7.5" fill="#ffffff"/>
+              <path d="M15 11.5V18.5M11.5 15H18.5" stroke="#0284c7" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
           </div>
         `,
-        iconSize: [60, 60],
-        iconAnchor: [30, 50],
+        iconSize: [120, 64],
+        iconAnchor: [60, 64],
+        popupAnchor: [0, -64],
       });
 
       const marker = L.marker([lat, lng], { icon: storePinIcon });
@@ -545,7 +560,7 @@ export function HomePage() {
         {/* Lista de Cards de Lojas Reais */}
         {!loading && lojas.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {lojas.map((loja) => {
+            {lojas.slice(0, 8).map((loja) => {
               const isSelected = selectedLojaId === loja.id;
 
               return (
@@ -599,6 +614,26 @@ export function HomePage() {
                 </div>
               );
             })}
+
+            {lojas.length > 8 && (
+              <button
+                type="button"
+                onClick={() => navigate('/lojas')}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #006375',
+                  color: '#006375',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Ver todas as lojas ({lojas.length})
+              </button>
+            )}
           </div>
         )}
       </aside>
