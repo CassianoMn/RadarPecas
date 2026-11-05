@@ -315,7 +315,7 @@ public static class DatabaseSeeder
                 string FotoPerfil,
                 string[] Galeria,
                 decimal Multiplicador,
-                int[] PromoPecas,
+                string[] PromoPecas,
                 int Nota,
                 string Comentario
             )[]
@@ -336,7 +336,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     1.00m,
-                    new[] { 1, 7 },
+                    new[] { "VELA-NGK-CPR8EA9", "OLEO-MOBIL-10W30-4T" },
                     5,
                     "Excelente loja! Atendimento rápido e grande estoque de peças originais."
                 ),
@@ -356,7 +356,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600",
                     new[] { "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600" },
                     0.95m,
-                    new[] { 2, 4 },
+                    new[] { "PAST-COBREQ-N917", "KIT-VAZ-CG160-RET" },
                     4,
                     "Ótimos preços e mecânicos capacitados. Recomendo."
                 ),
@@ -376,7 +376,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     0.98m,
-                    new[] { 5, 6 },
+                    new[] { "PNEU-PIRELLI-CITY-9090", "BAT-HELIAR-HTZ6L" },
                     5,
                     "Grande variedade de peças no Siqueira Campos, encontrei tudo de primeira."
                 ),
@@ -396,7 +396,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600",
                     new[] { "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600" },
                     0.96m,
-                    new[] { 3, 8 },
+                    new[] { "FILT-OLEO-FRAM-CH6015", "LAMP-LED-PHILIPS-H4" },
                     4,
                     "Atendimento muito atencioso e preço justo em motopeças."
                 ),
@@ -416,7 +416,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     1.05m,
-                    new[] { 1, 2 },
+                    new[] { "VELA-NGK-CPR8EA9", "PAST-COBREQ-N917" },
                     5,
                     "Concessionária nota 10! Peças genuínas Honda e oficina impecável."
                 ),
@@ -436,7 +436,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600",
                     new[] { "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600" },
                     0.94m,
-                    new[] { 4, 5 },
+                    new[] { "KIT-VAZ-CG160-RET", "PNEU-PIRELLI-CITY-9090" },
                     5,
                     "Tradição em Itabaiana! Grande estoque, preço excelente e serviço de retífica confiável."
                 ),
@@ -456,7 +456,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=600",
                     new[] { "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600" },
                     0.93m,
-                    new[] { 6, 7 },
+                    new[] { "BAT-HELIAR-HTZ6L", "OLEO-MOBIL-10W30-4T" },
                     5,
                     "Melhor preço de baterias e lubrificantes da cidade, recomendo demais."
                 ),
@@ -476,7 +476,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600" },
                     0.92m,
-                    new[] { 3, 9 },
+                    new[] { "FILT-OLEO-FRAM-CH6015", "CABO-EMB-MOTOBOR-CG160" },
                     4,
                     "Distribuição forte com ótimo preço tanto no atacado quanto no varejo."
                 ),
@@ -496,7 +496,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600",
                     new[] { "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600" },
                     0.95m,
-                    new[] { 8, 10 },
+                    new[] { "LAMP-LED-PHILIPS-H4", "CORREIA-GATES-NMAX" },
                     5,
                     "Atendimento prestativo e honesto. Troca de peças rápida no centro de Itabaiana."
                 ),
@@ -516,7 +516,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600",
                     new[] { "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=600" },
                     0.95m,
-                    new[] { 1, 4 },
+                    new[] { "VELA-NGK-CPR8EA9", "KIT-VAZ-CG160-RET" },
                     4,
                     "Sempre tem peças de reposição rápida para CG e Fan com preço justo."
                 ),
@@ -536,7 +536,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
                     new[] { "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600" },
                     0.98m,
-                    new[] { 2, 7 },
+                    new[] { "PAST-COBREQ-N917", "OLEO-MOBIL-10W30-4T" },
                     5,
                     "Referência em motopeças em Malhador! Salvou meu dia com uma relação pronta entrega."
                 ),
@@ -556,7 +556,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     0.97m,
-                    new[] { 1, 6 },
+                    new[] { "VELA-NGK-CPR8EA9", "BAT-HELIAR-HTZ6L" },
                     5,
                     "Tadeu é muito gente boa, atendimento prestativo e ótimo estoque em Ribeirópolis."
                 ),
@@ -576,7 +576,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600",
                     new[] { "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600" },
                     0.96m,
-                    new[] { 4, 7 },
+                    new[] { "KIT-VAZ-CG160-RET", "OLEO-MOBIL-10W30-4T" },
                     4,
                     "Boa oficina mecânica e motopeças variadas."
                 ),
@@ -596,7 +596,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600" },
                     0.98m,
-                    new[] { 3, 5 },
+                    new[] { "FILT-OLEO-FRAM-CH6015", "PNEU-PIRELLI-CITY-9090" },
                     5,
                     "Excelente loja em Moita Bonita! Peças novas com garantia."
                 ),
@@ -616,7 +616,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600",
                     new[] { "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600" },
                     0.97m,
-                    new[] { 2, 8 },
+                    new[] { "PAST-COBREQ-N917", "LAMP-LED-PHILIPS-H4" },
                     4,
                     "Atendimento cordial e serviços rápidos em motos na Moita."
                 ),
@@ -636,7 +636,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600",
                     new[] { "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600" },
                     0.96m,
-                    new[] { 4, 6 },
+                    new[] { "KIT-VAZ-CG160-RET", "BAT-HELIAR-HTZ6L" },
                     5,
                     "Loja tradicional em Campo do Brito na rodovia. Fácil acesso e ótimo estoque."
                 ),
@@ -656,7 +656,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600",
                     new[] { "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600" },
                     0.95m,
-                    new[] { 1, 9 },
+                    new[] { "VELA-NGK-CPR8EA9", "CABO-EMB-MOTOBOR-CG160" },
                     4,
                     "Mecânico de muita confiança e peças de qualidade."
                 ),
@@ -676,7 +676,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=600" },
                     0.96m,
-                    new[] { 2, 5 },
+                    new[] { "PAST-COBREQ-N917", "PNEU-PIRELLI-CITY-9090" },
                     5,
                     "Uma das maiores de Lagarto. Peças originais e paralelas com ótimo custo-benefício."
                 ),
@@ -696,7 +696,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1558980394-4c7c9299fe96?w=600",
                     new[] { "https://images.unsplash.com/photo-1558981359-219d6364c9c8?w=600" },
                     0.97m,
-                    new[] { 4, 7 },
+                    new[] { "KIT-VAZ-CG160-RET", "OLEO-MOBIL-10W30-4T" },
                     5,
                     "Excelente atendimento na Av. Contorno, preço honesto e rapidez."
                 ),
@@ -716,7 +716,7 @@ public static class DatabaseSeeder
                     "https://images.unsplash.com/photo-1580828343064-fde4fc206bc6?w=600",
                     new[] { "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=600" },
                     0.94m,
-                    new[] { 1, 6 },
+                    new[] { "VELA-NGK-CPR8EA9", "BAT-HELIAR-HTZ6L" },
                     4,
                     "Pimentinha sempre acha a peça certa pra você, muito gente boa."
                 )
@@ -781,7 +781,7 @@ public static class DatabaseSeeder
                         };
 
                         decimal precoVenda = Math.Round(precoBase * def.Multiplicador, 2);
-                        bool emPromocao = def.PromoPecas.Contains(peca.Id);
+                        bool emPromocao = def.PromoPecas.Contains(peca.Sku);
                         decimal? precoPromo = emPromocao ? Math.Round(precoVenda * 0.86m, 2) : null;
 
                         estoquesLoja.Add(new EstoqueLoja

@@ -54,6 +54,7 @@ export function HomePage() {
       if (lat != null && lon != null) {
         query.set('userLat', lat.toString());
         query.set('userLon', lon.toString());
+        query.set('raioKm', '15');
       }
       const queryString = query.toString();
       const lojasData = await api<Loja[]>(queryString ? `/lojas?${queryString}` : '/lojas');
@@ -559,7 +560,7 @@ export function HomePage() {
         {/* Lista de Cards de Lojas Reais */}
         {!loading && lojas.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {lojas.map((loja) => {
+            {lojas.slice(0, 8).map((loja) => {
               const isSelected = selectedLojaId === loja.id;
 
               return (
@@ -613,6 +614,26 @@ export function HomePage() {
                 </div>
               );
             })}
+
+            {lojas.length > 8 && (
+              <button
+                type="button"
+                onClick={() => navigate('/lojas')}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #006375',
+                  color: '#006375',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '10px 14px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                Ver todas as lojas ({lojas.length})
+              </button>
+            )}
           </div>
         )}
       </aside>
