@@ -473,7 +473,7 @@ export function HomePage() {
               padding: '11px 40px 11px 40px',
               borderRadius: 'var(--radius-pill)',
               border: '1px solid var(--border-strong)',
-              fontSize: '0.9rem',
+              fontSize: '1rem',
               outline: 'none',
               background: '#ffffff',
             }}
