@@ -151,14 +151,7 @@ export function AdicionarMotoPage() {
       {/* Card do Formulário em Duas Colunas */}
       <div className="card" style={{ padding: 28 }}>
         <form onSubmit={handleAddMoto}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'minmax(240px, 320px) 1fr',
-              gap: 28,
-              alignItems: 'start',
-            }}
-          >
+          <div className="add-moto-grid">
             {/* Coluna Esquerda: Foto da Moto Dropzone */}
             <div>
               <label className="field-label-mono" style={{ display: 'block', marginBottom: 8 }}>
@@ -230,7 +223,7 @@ export function AdicionarMotoPage() {
             {/* Coluna Direita: Dados do Veículo */}
             <div className="form">
               {/* Linha 1: Marca e Modelo */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="add-moto-row">
                 <div>
                   <label className="field-label-mono" style={{ display: 'block', marginBottom: 6 }}>
                     Marca *
