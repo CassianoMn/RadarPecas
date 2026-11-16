@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/TestResults/
+*.user
+*.suo
+.git/
+Código/frontend/
+AnaliseProjeto/
+Requisitos/
+Gerenciamento/
