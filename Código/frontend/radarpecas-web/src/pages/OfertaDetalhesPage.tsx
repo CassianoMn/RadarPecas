@@ -143,16 +143,7 @@ export function OfertaDetalhesPage() {
             return (
               <div style={{ marginTop: 24 }}>
                 <Card title="Especificações Técnicas">
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: 0,
-                      borderRadius: 'var(--radius)',
-                      overflow: 'hidden',
-                      border: '1px solid var(--border)',
-                    }}
-                  >
+                  <div className="oferta-specs-grid">
                     {Object.entries(specs).map(([key, value], idx) => (
                       <div
                         key={key}

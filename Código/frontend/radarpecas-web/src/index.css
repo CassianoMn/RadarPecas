@@ -2032,4 +2032,393 @@ a {
   }
 }
 
+/* ========================================================
+   RESPONSIVIDADE MOBILE (Issue #17)
+   Breakpoints: 1024 (tablet) · 920 (topbar/lojista) ·
+   880/768 (mobile) · 640/600/520/480 (mobile pequeno)
+   Regras adicionadas ao final para prevalecerem na cascata.
+   ======================================================== */
+
+/* Salvaguardas globais: nenhum elemento deve estourar a viewport */
+html,
+body {
+  overflow-x: hidden;
+}
+
+img,
+video,
+iframe,
+.leaflet-container {
+  max-width: 100%;
+}
+
+.field,
+.perfil-fields-group,
+.search-sidebar,
+.recommended-parts-panel,
+.details-layout > *,
+.garage-grid > *,
+.search-layout > * {
+  min-width: 0;
+}
+
+/* Classes utilitárias para layouts fixos em TSX (evitam inline com overflow) */
+.add-moto-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.add-moto-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.resp-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.oferta-specs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.chips-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Topbar: navegação em segunda linha com rolagem horizontal ---------- */
+@media (max-width: 920px) {
+  .topbar-back-btn {
+    order: 0;
+    flex-shrink: 0;
+  }
+
+  .brand-wrapper {
+    order: 1;
+  }
+
+  .userbox {
+    order: 2;
+    margin-left: auto;
+    gap: 10px;
+  }
+
+  .nav {
+    order: 3;
+    flex: 1 1 100%;
+    margin-left: 0;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav a {
+    white-space: nowrap;
+    padding: 10px 12px;
+  }
+
+  .topbar-search-form {
+    order: 4;
+  }
+
+  .brand-text {
+    font-size: 1.1rem;
+  }
+
+  .btn-garage-top {
+    white-space: nowrap;
+  }
+
+  .user-dropdown-menu {
+    max-width: min(85vw, 320px);
+  }
+}
+
+/* ---------- Tablet (até 1024px) ---------- */
+@media (max-width: 1024px) {
+  .explore-sidebar {
+    width: 340px;
+    min-width: 300px;
+  }
+
+  .perfil-section-card {
+    padding: 20px;
+  }
+}
+
+/* ---------- Mobile (até 768px) ---------- */
+@media (max-width: 768px) {
+  .content-wrap {
+    padding: 16px 12px 36px;
+  }
+
+  /* Explorar: mapa primeiro, lista abaixo em fluxo normal */
+  .explore-container {
+    flex-direction: column-reverse;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .explore-map-wrapper {
+    height: 340px;
+    flex: none;
+    width: 100%;
+  }
+
+  .explore-sidebar {
+    width: 100%;
+    min-width: unset;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 12px;
+  }
+
+  /* Busca */
+  .search-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .search-sidebar {
+    gap: 14px;
+    width: 100%;
+  }
+
+  .product-card-img-wrap {
+    height: 170px;
+  }
+
+  /* Lojas / Garagem */
+  .stores-catalog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .recommended-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Detalhes de peça/oferta/loja */
+  .details-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .product-main-photo-wrap {
+    height: 260px;
+    padding: 12px;
+  }
+
+  .gallery-thumbs-row {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .moto-card-img-wrap {
+    height: 120px;
+  }
+
+  /* Formulários: 16px evita zoom automático no iOS */
+  .input,
+  select.input,
+  .topbar-search-input,
+  .map-floating-search input {
+    font-size: 16px;
+  }
+
+  /* Alvos de toque em navegação e botões */
+  .btn {
+    min-height: 40px;
+    padding: 10px 16px;
+  }
+
+  .nav a {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .star-btn {
+    font-size: 2rem;
+  }
+}
+
+/* ---------- Mobile pequeno (até 640px) ---------- */
+@media (max-width: 640px) {
+  .topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .brand-logo-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-text {
+    font-size: 1rem;
+  }
+
+  .btn-garage-top {
+    padding: 6px 10px;
+    font-size: 0.68rem;
+  }
+
+  .nav a {
+    font-size: 0.85rem;
+  }
+
+  .lojista-badge-btn span {
+    max-width: 90px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Auth */
+  .auth-page-container {
+    padding: 20px 12px;
+  }
+
+  .auth-card-box {
+    padding: 20px;
+  }
+
+  .segmented-control-btn {
+    font-size: 0.75rem;
+    padding: 9px 8px;
+    white-space: nowrap;
+  }
+
+  .social-auth-row {
+    flex-wrap: wrap;
+  }
+
+  /* Perfil */
+  .perfil-title {
+    font-size: 1.5rem;
+  }
+
+  .perfil-identity-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .perfil-section-card {
+    padding: 16px;
+  }
+
+  .perfil-actions-bar {
+    flex-wrap: wrap;
+  }
+
+  .add-moto-row {
+    grid-template-columns: 1fr;
+  }
+
+  .resp-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+/* ---------- Mobile muito pequeno (até 520px) ---------- */
+@media (max-width: 520px) {
+  .oferta-specs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Mobile muito pequeno (até 480px) ---------- */
+@media (max-width: 480px) {
+  .explore-map-wrapper {
+    height: 300px;
+  }
+
+  .map-selected-location-badge {
+    top: 64px;
+    left: 12px;
+    max-width: min(300px, calc(100vw - 72px));
+  }
+
+  .map-floating-search-wrapper {
+    width: calc(100% - 24px);
+  }
+
+  .map-controls-panel {
+    right: 12px;
+  }
+
+  .product-main-photo-wrap {
+    height: 220px;
+  }
+
+  .product-card-body {
+    padding: 12px;
+  }
+
+  .perfil-title {
+    font-size: 1.35rem;
+  }
+
+  .lojista-main {
+    padding: 16px;
+  }
+
+  .lojista-page-header h1,
+  .explore-container h1 {
+    font-size: 1.45rem !important;
+    line-height: 1.25;
+  }
+
+  .rate-store-container {
+    padding: 0 4px;
+  }
+
+  .add-moto-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* ---------- Formulário de moto (AdicionarMotoPage) ---------- */
+@media (max-width: 880px) {
+  .add-moto-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 

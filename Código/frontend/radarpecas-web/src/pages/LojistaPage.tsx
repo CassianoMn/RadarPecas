@@ -1524,7 +1524,7 @@ export function LojistaPage() {
                   <div className="card" style={{ padding: 22, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
                     <h3 style={{ marginTop: 0, marginBottom: 14, fontSize: '1rem', color: '#0f172a' }}>Estoque e Preço</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="resp-grid-2">
                         <Field label="Quantidade em Estoque *">
                           <TextInput
                             type="number"
