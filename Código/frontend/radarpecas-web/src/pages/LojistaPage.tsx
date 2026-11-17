@@ -42,6 +42,7 @@ import {
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/useAuth';
 import { Button, ErrorState, Field, TextInput } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 import type { EstoqueItem, Loja, ModeloMoto, Peca } from '../types';
 
 type LojistaTab =
@@ -876,9 +877,11 @@ export function LojistaPage() {
             }}
           >
             {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
-              <img
+              <SmartImage
                 src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
                 alt={loja?.nomeFantasia || 'Loja'}
+                width={38}
+                height={38}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
@@ -3219,13 +3222,12 @@ export function LojistaPage() {
                       }}
                     >
                       {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
-                        <img
+                        <SmartImage
                           src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
                           alt={loja?.nomeFantasia || 'Foto de Perfil'}
+                          width={96}
+                          height={96}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          }}
                         />
                       ) : (
                         <>

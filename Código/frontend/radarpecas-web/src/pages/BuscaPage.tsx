@@ -4,10 +4,12 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { BuscaResultado, OfertaBuscaItem } from '../types';
-import { CheckIcon, ErrorState, Loading } from '../components/ui';
+import { CheckIcon, ErrorState } from '../components/ui';
 import { FiltrosOfertas } from '../components/FiltrosOfertas';
 import type { DistanciaPill } from '../components/FiltrosOfertas';
 import { FilterSheet } from '../components/FilterSheet';
+import { SmartImage } from '../components/SmartImage';
+import { ProductCardSkeleton } from '../components/Skeleton';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 const PAGE_SIZE = 12;
@@ -541,7 +543,13 @@ export function BuscaPage() {
         </div>
 
         <div aria-busy={loading || loadingMore}>
-          {loading && <Loading text="Buscando ofertas para sua moto..." />}
+          {loading && (
+            <div className="search-results-grid" aria-label="Carregando ofertas...">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <ProductCardSkeleton key={n} />
+              ))}
+            </div>
+          )}
           {error && !loading && (
             <ErrorState text={error} onRetry={() => void executarBusca(1, false)} />
           )}
@@ -621,11 +629,12 @@ export function BuscaPage() {
                             </div>
                           )}
 
-                          {item.fotoPecaUrl ? (
-                            <img src={item.fotoPecaUrl} alt={item.nomePeca} />
-                          ) : (
-                            <div style={{ fontSize: '3rem' }}>⚙️</div>
-                          )}
+                          <SmartImage
+                            src={item.fotoPecaUrl}
+                            alt={item.nomePeca}
+                            width={300}
+                            height={200}
+                          />
                         </div>
 
                         {/* Corpo do Card */}
@@ -667,6 +676,14 @@ export function BuscaPage() {
                       </article>
                     );
                   })}
+                </div>
+              )}
+
+              {loadingMore && (
+                <div className="search-results-grid" style={{ marginTop: 16 }}>
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
+                  <ProductCardSkeleton />
                 </div>
               )}
 

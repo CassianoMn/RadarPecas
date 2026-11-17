@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Loja } from '../types';
 import { Button, ErrorState, Loading } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 
 export function AvaliarLojaPage() {
   const { id } = useParams<{ id: string }>();
@@ -93,9 +94,11 @@ export function AvaliarLojaPage() {
           }}
         >
           {loja.fotoPerfilUrl ? (
-            <img
+            <SmartImage
               src={loja.fotoPerfilUrl}
               alt={loja.nomeFantasia}
+              width={60}
+              height={60}
               style={{
                 width: 60,
                 height: 60,

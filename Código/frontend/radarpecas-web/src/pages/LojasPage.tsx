@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Loja, PagedResult } from '../types';
-import { EmptyState, ErrorState, Loading, StarIcon } from '../components/ui';
+import { EmptyState, ErrorState, StarIcon } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
+import { StoreCardSkeleton } from '../components/Skeleton';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
 
 const PAGE_SIZE = 12;
@@ -148,7 +150,13 @@ export function LojasPage() {
         </button>
       </div>
 
-      {loading && <Loading text="Carregando lojas credenciadas..." />}
+      {loading && (
+        <div className="stores-catalog-grid" aria-busy="true" aria-label="Carregando lojas credenciadas...">
+          {[1, 2, 3, 4].map((n) => (
+            <StoreCardSkeleton key={n} />
+          ))}
+        </div>
+      )}
 
       {error && !loading && (
         <ErrorState text={error} onRetry={() => void carregarPagina(1, false)} />
@@ -164,23 +172,12 @@ export function LojasPage() {
               <article key={loja.id} className="store-catalog-card">
                 {/* Foto / Imagem da Loja com Badge de Avaliação */}
                 <div className="store-catalog-img-wrap">
-                  {loja.fotoPerfilUrl ? (
-                    <img src={loja.fotoPerfilUrl} alt={loja.nomeFantasia} />
-                  ) : (
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '3rem',
-                        color: 'var(--text-muted)',
-                      }}
-                    >
-                      🏪
-                    </div>
-                  )}
+                  <SmartImage
+                    src={loja.fotoPerfilUrl}
+                    alt={loja.nomeFantasia}
+                    width={320}
+                    height={180}
+                  />
 
                   {/* Badge de Avaliação ou 'Novo' no canto superior direito */}
                   <div className="badge-photo-topright">

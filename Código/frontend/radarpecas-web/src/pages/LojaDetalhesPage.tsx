@@ -6,6 +6,8 @@ import { parseHorariosFuncionamento } from '../lib/formatters';
 import { useAuth } from '../auth/useAuth';
 import type { AvaliacoesResumo, EstoqueItem, Loja, PagedResult } from '../types';
 import { Button, Card, Chip, EmptyState, ErrorState, Field, Loading } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
+import { PageSkeleton, ProductCardSkeleton } from '../components/Skeleton';
 
 export function LojaDetalhesPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,18 +43,26 @@ export function LojaDetalhesPage() {
   // Carregar dados da loja
   useEffect(() => {
     if (!id) return;
+    const controller = new AbortController();
     setLoadingLoja(true);
     setErrorLoja('');
 
-    api<Loja>(`/lojas/${id}`)
+    api<Loja>(`/lojas/${id}`, { signal: controller.signal })
       .then((data) => setLoja(data))
-      .catch((err) => setErrorLoja(err instanceof ApiError ? err.message : 'Erro ao carregar loja.'))
-      .finally(() => setLoadingLoja(false));
+      .catch((err) => {
+        if ((err as Error)?.name === 'AbortError') return;
+        setErrorLoja(err instanceof ApiError ? err.message : 'Erro ao carregar loja.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingLoja(false);
+      });
+    return () => controller.abort();
   }, [id]);
 
   // Carregar estoque quando a aba 'estoque' estiver ativa ou filtros mudarem
   useEffect(() => {
     if (!id || tab !== 'estoque') return;
+    const controller = new AbortController();
     setLoadingEstoque(true);
 
     const params = new URLSearchParams();
@@ -61,10 +71,13 @@ export function LojaDetalhesPage() {
     params.set('page', pageEstoque.toString());
     params.set('pageSize', '10');
 
-    api<PagedResult<EstoqueItem>>(`/lojas/${id}/estoque?${params.toString()}`)
+    api<PagedResult<EstoqueItem>>(`/lojas/${id}/estoque?${params.toString()}`, { signal: controller.signal })
       .then((data) => setEstoque(data))
       .catch(() => {})
-      .finally(() => setLoadingEstoque(false));
+      .finally(() => {
+        if (!controller.signal.aborted) setLoadingEstoque(false);
+      });
+    return () => controller.abort();
   }, [id, tab, buscaEstoque, apenasPromocao, pageEstoque]);
 
   // Carregar avaliações quando a aba 'avaliacoes' estiver ativa
@@ -119,7 +132,7 @@ export function LojaDetalhesPage() {
   if (loadingLoja) {
     return (
       <section>
-        <Loading text="Carregando perfil da loja..." />
+        <PageSkeleton />
       </section>
     );
   }
@@ -159,9 +172,12 @@ export function LojaDetalhesPage() {
       >
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           {loja.fotoPerfilUrl ? (
-            <img
+            <SmartImage
               src={loja.fotoPerfilUrl}
               alt={loja.nomeFantasia}
+              width={90}
+              height={90}
+              priority
               style={{
                 width: 90,
                 height: 90,
@@ -250,10 +266,12 @@ export function LojaDetalhesPage() {
             </span>
             <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginTop: 8, paddingBottom: 6 }}>
               {loja.galeriaFotosUrls.map((url, idx) => (
-                <img
+                <SmartImage
                   key={idx}
                   src={url}
                   alt={`Loja foto ${idx + 1}`}
+                  width={140}
+                  height={90}
                   style={{
                     height: 90,
                     width: 140,
@@ -337,7 +355,13 @@ export function LojaDetalhesPage() {
             </label>
           </div>
 
-          {loadingEstoque && <Loading text="Carregando estoque..." />}
+          {loadingEstoque && (
+            <div className="grid" aria-busy="true" aria-label="Carregando estoque...">
+              {[1, 2, 3].map((n) => (
+                <ProductCardSkeleton key={n} />
+              ))}
+            </div>
+          )}
 
           {!loadingEstoque && estoque && estoque.items.length === 0 && (
             <EmptyState text="Nenhum item encontrado no estoque desta loja." />
@@ -361,36 +385,20 @@ export function LojaDetalhesPage() {
                   }
                 >
                   <div style={{ display: 'flex', gap: 12 }}>
-                    {item.fotoPecaUrl ? (
-                      <img
-                        src={item.fotoPecaUrl}
-                        alt={item.nomePeca}
-                        style={{
-                          width: 70,
-                          height: 70,
-                          objectFit: 'cover',
-                          borderRadius: 'var(--radius)',
-                          border: '1px solid var(--border)',
-                          flexShrink: 0,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: 70,
-                          height: 70,
-                          borderRadius: 'var(--radius)',
-                          background: 'var(--chip-bg)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1.5rem',
-                          flexShrink: 0,
-                        }}
-                      >
-                        ⚙️
-                      </div>
-                    )}
+                    <SmartImage
+                      src={item.fotoPecaUrl}
+                      alt={item.nomePeca}
+                      width={70}
+                      height={70}
+                      style={{
+                        width: 70,
+                        height: 70,
+                        objectFit: 'cover',
+                        borderRadius: 'var(--radius)',
+                        border: '1px solid var(--border)',
+                        flexShrink: 0,
+                      }}
+                    />
 
                     <div style={{ flex: 1 }}>
                       <div className="chips-row" style={{ marginBottom: 4 }}>

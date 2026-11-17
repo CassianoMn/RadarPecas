@@ -168,6 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    if (typeof caches !== 'undefined') {
+      void caches.keys().then((keys) => {
+        keys
+          .filter((key) => key.startsWith('radarpecas-api-'))
+          .forEach((key) => void caches.delete(key));
+      });
+    }
   }, []);
 
   const value = useMemo(

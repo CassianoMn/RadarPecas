@@ -5,6 +5,7 @@ import { api, ApiError } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { GaragemItem, ModeloMoto } from '../types';
 import { Button, CameraPlusIcon, ErrorState } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 
 export function AdicionarMotoPage() {
   const navigate = useNavigate();
@@ -160,7 +161,7 @@ export function AdicionarMotoPage() {
 
               {previewUrl ? (
                 <div className="photo-preview-box">
-                  <img src={previewUrl} alt="Preview da moto" />
+                  <SmartImage src={previewUrl} alt="Preview da moto" width={300} height={200} priority />
                   <button
                     type="button"
                     onClick={() => {

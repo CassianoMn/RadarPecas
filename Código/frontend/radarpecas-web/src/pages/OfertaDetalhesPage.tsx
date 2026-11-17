@@ -1,10 +1,12 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Navigation } from 'lucide-react';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
-import { Button, Card, CheckIcon, ErrorState, Loading, StarIcon } from '../components/ui';
+import { Button, Card, CheckIcon, ErrorState, StarIcon } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
+import { Skeleton } from '../components/Skeleton';
 
 const MiniMapaLoja = lazy(() => import('../components/MiniMapaLoja'));
 
@@ -18,18 +20,28 @@ export function OfertaDetalhesPage() {
   const [activeThumbIndex, setActiveThumbIndex] = useState(0);
   const [reservado, setReservado] = useState(false);
 
-  useEffect(() => {
+  const carregarOferta = useCallback((signal?: AbortSignal) => {
     if (!id) return;
     setLoading(true);
+    setError('');
 
-    api<OfertaDetalhe>(`/ofertas/${id}`)
+    api<OfertaDetalhe>(`/ofertas/${id}`, { signal })
       .then((data) => setOferta(data))
-      .catch(() => {
+      .catch((err) => {
+        if ((err as Error)?.name === 'AbortError') return;
         setError('Oferta não encontrada.');
         setOferta(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!signal?.aborted) setLoading(false);
+      });
   }, [id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    carregarOferta(controller.signal);
+    return () => controller.abort();
+  }, [carregarOferta]);
 
   function formatMoney(valor: number): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -59,8 +71,20 @@ export function OfertaDetalhesPage() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank', 'noopener,noreferrer');
   }
 
-  if (loading) return <Loading text="Carregando detalhes do produto..." />;
-  if (error || !oferta) return <ErrorState text={error || 'Oferta não encontrada.'} />;
+  if (loading) {
+    return (
+      <div className="details-layout" aria-busy="true" aria-label="Carregando detalhes do produto">
+        <Skeleton height={340} borderRadius="var(--radius-lg)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Skeleton height={220} borderRadius="var(--radius-lg)" />
+          <Skeleton height={260} borderRadius="var(--radius-lg)" />
+        </div>
+      </div>
+    );
+  }
+  if (error || !oferta) {
+    return <ErrorState text={error || 'Oferta não encontrada.'} onRetry={() => carregarOferta()} />;
+  }
 
   // Fotos disponíveis
   const galleryPhotos = [
@@ -99,16 +123,13 @@ export function OfertaDetalhesPage() {
               </div>
             )}
 
-            {galleryPhotos.length > 0 ? (
-              <img
-                src={galleryPhotos[activeThumbIndex] || galleryPhotos[0]}
-                alt={oferta.peca.nome}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>
-                ⚙️
-              </div>
-            )}
+            <SmartImage
+              src={galleryPhotos[activeThumbIndex] || galleryPhotos[0]}
+              alt={oferta.peca.nome}
+              width={540}
+              height={360}
+              priority
+            />
           </div>
 
           {/* Miniaturas da Galeria (apenas se houver mais de 1 imagem) */}
@@ -121,7 +142,7 @@ export function OfertaDetalhesPage() {
                   className={`gallery-thumb ${activeThumbIndex === idx ? 'active' : ''}`}
                   onClick={() => setActiveThumbIndex(idx)}
                 >
-                  <img src={url} alt={`Foto miniatura ${idx + 1}`} />
+                  <SmartImage src={url} alt={`Foto miniatura ${idx + 1}`} width={72} height={72} />
                 </button>
               ))}
             </div>

@@ -198,6 +198,7 @@ npm install
 npm run dev -- --port 5173
 ```
 - Aplicação Web: `http://localhost:5173`
+- Auditoria Lighthouse CI (rodar contra `npm run build` + `npm run preview` com a API local ativa): `npm run lighthouse`
 
 ---
 
