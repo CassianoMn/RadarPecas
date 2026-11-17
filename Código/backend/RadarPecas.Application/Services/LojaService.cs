@@ -25,68 +25,179 @@ public class LojaService : ILojaService
 
     public async Task<ApiResponse<List<LojaResponse>>> ListarLojasAsync(decimal? userLat = null, decimal? userLon = null, decimal? raioKm = null, CancellationToken cancellationToken = default)
     {
-        var lojas = await _context.Lojas
-            .AsNoTracking()
-            .Include(l => l.Avaliacoes)
-            .Where(l => l.Ativa)
-            .ToListAsync(cancellationToken);
+        var ordenacao = (userLat.HasValue && userLon.HasValue) ? "proximas" : "nome";
+        var query = ConstruirConsultaLojas(userLat, userLon, raioKm, ordenacao);
 
-        var result = new List<LojaResponse>();
-
-        foreach (var l in lojas)
-        {
-            decimal? distancia = null;
-            if (userLat.HasValue && userLon.HasValue)
-            {
-                distancia = _geolocationService.CalcularDistanciaKm(userLat.Value, userLon.Value, l.Latitude, l.Longitude);
-                if (raioKm.HasValue && distancia.Value > raioKm.Value)
-                {
-                    continue;
-                }
-            }
-
-            var totalAvaliacoes = l.Avaliacoes.Count;
-            var mediaAvaliacao = totalAvaliacoes > 0 ? Math.Round(l.Avaliacoes.Average(a => a.Nota), 1) : 5.0;
-
-            result.Add(new LojaResponse
-            {
-                Id = l.Id,
-                UsuarioId = l.UsuarioId,
-                NomeFantasia = l.NomeFantasia,
-                Cnpj = l.Cnpj,
-                EnderecoCompleto = l.EnderecoCompleto,
-                Latitude = l.Latitude,
-                Longitude = l.Longitude,
-                TelefoneContato = l.TelefoneContato,
-                EmailContato = l.EmailContato,
-                HorariosFuncionamento = l.HorariosFuncionamento,
-                FotoPerfilUrl = l.FotoPerfilUrl,
-                GaleriaFotosUrls = l.GaleriaFotosUrls,
-                Ativa = l.Ativa,
-                MediaAvaliacao = mediaAvaliacao,
-                TotalAvaliacoes = totalAvaliacoes,
-                DistanciaKm = distancia
-            });
-        }
-
-        if (userLat.HasValue && userLon.HasValue)
-        {
-            result = result.OrderBy(r => r.DistanciaKm ?? decimal.MaxValue).ToList();
-        }
-        else
-        {
-            result = result.OrderBy(r => r.NomeFantasia).ToList();
-        }
+        var rows = await query.ToListAsync(cancellationToken);
+        var result = rows.Select(MapearLojaResponse).ToList();
 
         return ApiResponse<List<LojaResponse>>.Ok(result);
     }
+
+    public async Task<ApiResponse<PagedResult<LojaResponse>>> ListarLojasPaginadoAsync(
+        decimal? userLat = null,
+        decimal? userLon = null,
+        decimal? raioKm = null,
+        string? ordenacao = "proximas",
+        int page = 1,
+        int pageSize = 12,
+        CancellationToken cancellationToken = default)
+    {
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 12;
+        if (pageSize > 100) pageSize = 100;
+
+        var query = ConstruirConsultaLojas(userLat, userLon, raioKm, ordenacao);
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var rows = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = rows.Select(MapearLojaResponse).ToList();
+        var paged = new PagedResult<LojaResponse>(items, totalCount, page, pageSize);
+
+        return ApiResponse<PagedResult<LojaResponse>>.Ok(paged);
+    }
+
+    private sealed class LojaProjetadaRow
+    {
+        public Guid Id { get; init; }
+        public Guid UsuarioId { get; init; }
+        public string NomeFantasia { get; init; } = string.Empty;
+        public string? Cnpj { get; init; }
+        public string EnderecoCompleto { get; init; } = string.Empty;
+        public decimal Latitude { get; init; }
+        public decimal Longitude { get; init; }
+        public string? TelefoneContato { get; init; }
+        public string? EmailContato { get; init; }
+        public string? HorariosFuncionamento { get; init; }
+        public string? FotoPerfilUrl { get; init; }
+        public string[]? GaleriaFotosUrls { get; init; }
+        public bool Ativa { get; init; }
+        public int TotalAvaliacoes { get; init; }
+        public double MediaAvaliacao { get; init; }
+        public double? DistanciaDouble { get; init; }
+    }
+
+    private IQueryable<LojaProjetadaRow> ConstruirConsultaLojas(
+        decimal? userLat,
+        decimal? userLon,
+        decimal? raioKm,
+        string? ordenacao)
+    {
+        var query = _context.Lojas
+            .AsNoTracking()
+            .Where(l => l.Ativa);
+
+        bool hasUserCoords = userLat.HasValue && userLon.HasValue;
+        if (hasUserCoords && raioKm.HasValue && raioKm.Value > 0)
+        {
+            var (minLat, maxLat, minLon, maxLon) = _geolocationService.CalcularBoundingBox(
+                userLat!.Value,
+                userLon!.Value,
+                raioKm.Value);
+
+            query = query.Where(l =>
+                l.Latitude >= minLat && l.Latitude <= maxLat &&
+                l.Longitude >= minLon && l.Longitude <= maxLon);
+        }
+
+        const double degToRad = Math.PI / 180.0;
+        double uLatRad = hasUserCoords ? (double)userLat!.Value * degToRad : 0.0;
+        double uLonRad = hasUserCoords ? (double)userLon!.Value * degToRad : 0.0;
+        double cosULat = hasUserCoords ? Math.Cos(uLatRad) : 1.0;
+
+        var projetada = query.Select(l => new LojaProjetadaRow
+        {
+            Id = l.Id,
+            UsuarioId = l.UsuarioId,
+            NomeFantasia = l.NomeFantasia,
+            Cnpj = l.Cnpj,
+            EnderecoCompleto = l.EnderecoCompleto,
+            Latitude = l.Latitude,
+            Longitude = l.Longitude,
+            TelefoneContato = l.TelefoneContato,
+            EmailContato = l.EmailContato,
+            HorariosFuncionamento = l.HorariosFuncionamento,
+            FotoPerfilUrl = l.FotoPerfilUrl,
+            GaleriaFotosUrls = l.GaleriaFotosUrls,
+            Ativa = l.Ativa,
+            TotalAvaliacoes = l.Avaliacoes.Count(),
+            MediaAvaliacao = l.Avaliacoes.Any() ? l.Avaliacoes.Average(a => (double)a.Nota) : 5.0,
+            DistanciaDouble = hasUserCoords
+                ? 2.0 * 6371.0 * Math.Asin(Math.Min(1.0, Math.Sqrt(
+                    Math.Pow(Math.Sin(((double)l.Latitude * degToRad - uLatRad) / 2.0), 2.0) +
+                    cosULat * Math.Cos((double)l.Latitude * degToRad) *
+                    Math.Pow(Math.Sin(((double)l.Longitude * degToRad - uLonRad) / 2.0), 2.0))))
+                : (double?)null
+        });
+
+        if (hasUserCoords && raioKm.HasValue && raioKm.Value > 0)
+        {
+            double raioMax = (double)raioKm.Value;
+            projetada = projetada.Where(x => x.DistanciaDouble <= raioMax);
+        }
+
+        var ord = (ordenacao ?? "proximas").ToLowerInvariant();
+        return ord switch
+        {
+            "melhor_avaliacao" or "avaliacao" => projetada
+                .OrderByDescending(x => x.MediaAvaliacao)
+                .ThenBy(x => x.DistanciaDouble ?? double.MaxValue)
+                .ThenBy(x => x.NomeFantasia),
+            "nome" => projetada.OrderBy(x => x.NomeFantasia),
+            _ => hasUserCoords
+                ? projetada.OrderBy(x => x.DistanciaDouble ?? double.MaxValue).ThenBy(x => x.NomeFantasia)
+                : projetada.OrderBy(x => x.NomeFantasia)
+        };
+    }
+
+    private static LojaResponse MapearLojaResponse(LojaProjetadaRow row) => new()
+    {
+        Id = row.Id,
+        UsuarioId = row.UsuarioId,
+        NomeFantasia = row.NomeFantasia,
+        Cnpj = row.Cnpj,
+        EnderecoCompleto = row.EnderecoCompleto,
+        Latitude = row.Latitude,
+        Longitude = row.Longitude,
+        TelefoneContato = row.TelefoneContato,
+        EmailContato = row.EmailContato,
+        HorariosFuncionamento = row.HorariosFuncionamento,
+        FotoPerfilUrl = row.FotoPerfilUrl,
+        GaleriaFotosUrls = row.GaleriaFotosUrls,
+        Ativa = row.Ativa,
+        MediaAvaliacao = Math.Round(row.MediaAvaliacao, 1),
+        TotalAvaliacoes = row.TotalAvaliacoes,
+        DistanciaKm = row.DistanciaDouble.HasValue ? Math.Round((decimal)row.DistanciaDouble.Value, 2) : null
+    };
 
     public async Task<ApiResponse<LojaResponse>> ObterLojaPorIdAsync(Guid id, decimal? userLat = null, decimal? userLon = null, CancellationToken cancellationToken = default)
     {
         var l = await _context.Lojas
             .AsNoTracking()
-            .Include(l => l.Avaliacoes)
-            .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
+            .Where(x => x.Id == id)
+            .Select(x => new
+            {
+                x.Id,
+                x.UsuarioId,
+                x.NomeFantasia,
+                x.Cnpj,
+                x.EnderecoCompleto,
+                x.Latitude,
+                x.Longitude,
+                x.TelefoneContato,
+                x.EmailContato,
+                x.HorariosFuncionamento,
+                x.FotoPerfilUrl,
+                x.GaleriaFotosUrls,
+                x.Ativa,
+                TotalAvaliacoes = x.Avaliacoes.Count(),
+                MediaAvaliacao = x.Avaliacoes.Any() ? x.Avaliacoes.Average(a => (double)a.Nota) : 5.0
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (l == null)
         {
@@ -99,9 +210,6 @@ public class LojaService : ILojaService
             distancia = _geolocationService.CalcularDistanciaKm(userLat.Value, userLon.Value, l.Latitude, l.Longitude);
         }
 
-        var totalAvaliacoes = l.Avaliacoes.Count;
-        var mediaAvaliacao = totalAvaliacoes > 0 ? Math.Round(l.Avaliacoes.Average(a => a.Nota), 1) : 5.0;
-
         var response = new LojaResponse
         {
             Id = l.Id,
@@ -117,8 +225,8 @@ public class LojaService : ILojaService
             FotoPerfilUrl = l.FotoPerfilUrl,
             GaleriaFotosUrls = l.GaleriaFotosUrls,
             Ativa = l.Ativa,
-            MediaAvaliacao = mediaAvaliacao,
-            TotalAvaliacoes = totalAvaliacoes,
+            MediaAvaliacao = Math.Round(l.MediaAvaliacao, 1),
+            TotalAvaliacoes = l.TotalAvaliacoes,
             DistanciaKm = distancia
         };
 
@@ -129,16 +237,31 @@ public class LojaService : ILojaService
     {
         var l = await _context.Lojas
             .AsNoTracking()
-            .Include(l => l.Avaliacoes)
-            .FirstOrDefaultAsync(l => l.UsuarioId == usuarioId, cancellationToken);
+            .Where(x => x.UsuarioId == usuarioId)
+            .Select(x => new
+            {
+                x.Id,
+                x.UsuarioId,
+                x.NomeFantasia,
+                x.Cnpj,
+                x.EnderecoCompleto,
+                x.Latitude,
+                x.Longitude,
+                x.TelefoneContato,
+                x.EmailContato,
+                x.HorariosFuncionamento,
+                x.FotoPerfilUrl,
+                x.GaleriaFotosUrls,
+                x.Ativa,
+                TotalAvaliacoes = x.Avaliacoes.Count(),
+                MediaAvaliacao = x.Avaliacoes.Any() ? x.Avaliacoes.Average(a => (double)a.Nota) : 5.0
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (l == null)
         {
             return ApiResponse<LojaResponse>.Fail("Nenhuma loja vinculada a este usuário.");
         }
-
-        var totalAvaliacoes = l.Avaliacoes.Count;
-        var mediaAvaliacao = totalAvaliacoes > 0 ? Math.Round(l.Avaliacoes.Average(a => a.Nota), 1) : 5.0;
 
         var response = new LojaResponse
         {
@@ -155,8 +278,8 @@ public class LojaService : ILojaService
             FotoPerfilUrl = l.FotoPerfilUrl,
             GaleriaFotosUrls = l.GaleriaFotosUrls,
             Ativa = l.Ativa,
-            MediaAvaliacao = mediaAvaliacao,
-            TotalAvaliacoes = totalAvaliacoes
+            MediaAvaliacao = Math.Round(l.MediaAvaliacao, 1),
+            TotalAvaliacoes = l.TotalAvaliacoes
         };
 
         return ApiResponse<LojaResponse>.Ok(response);
@@ -169,8 +292,18 @@ public class LojaService : ILojaService
             return ApiResponse<LojaResponse>.Fail("Nome fantasia e endereço completo são obrigatórios.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.EmailContato) && !SegurancaValidacao.EmailValido(request.EmailContato))
+        {
+            return ApiResponse<LojaResponse>.Fail("Informe um e-mail de contato válido.");
+        }
+
         if (!string.IsNullOrWhiteSpace(request.Cnpj))
         {
+            if (!SegurancaValidacao.CnpjValido(request.Cnpj))
+            {
+                return ApiResponse<LojaResponse>.Fail("CNPJ inválido. Verifique os dígitos informados.");
+            }
+
             var cnpjExiste = await _context.Lojas.AnyAsync(l => l.Cnpj == request.Cnpj.Trim(), cancellationToken);
             if (cnpjExiste)
             {
@@ -178,16 +311,21 @@ public class LojaService : ILojaService
             }
         }
 
-        decimal lat = request.Latitude ?? 0;
-        decimal lon = request.Longitude ?? 0;
+        decimal lat = request.Latitude ?? 0m;
+        decimal lon = request.Longitude ?? 0m;
 
-        if (lat == 0 && lon == 0)
+        if (!SegurancaValidacao.CoordenadasValidas(lat, lon))
         {
             var coords = await _geocodingService.GeocodeAddressAsync(request.EnderecoCompleto, cancellationToken);
-            if (coords.HasValue)
+            if (coords.HasValue && SegurancaValidacao.CoordenadasValidas(coords.Value.Latitude, coords.Value.Longitude))
             {
                 lat = coords.Value.Latitude;
                 lon = coords.Value.Longitude;
+            }
+            else
+            {
+                return ApiResponse<LojaResponse>.Fail(
+                    "Não foi possível localizar as coordenadas do endereço informado. Informe rua, número, cidade e UF completos.");
             }
         }
 
@@ -238,8 +376,18 @@ public class LojaService : ILojaService
             return ApiResponse<LojaResponse>.Fail("Nome fantasia e endereço completo são obrigatórios.");
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Cnpj) && request.Cnpj != loja.Cnpj)
+        if (!string.IsNullOrWhiteSpace(request.EmailContato) && !SegurancaValidacao.EmailValido(request.EmailContato))
         {
+            return ApiResponse<LojaResponse>.Fail("Informe um e-mail de contato válido.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Cnpj) && request.Cnpj.Trim() != loja.Cnpj)
+        {
+            if (!SegurancaValidacao.CnpjValido(request.Cnpj))
+            {
+                return ApiResponse<LojaResponse>.Fail("CNPJ inválido. Verifique os dígitos informados.");
+            }
+
             var cnpjExiste = await _context.Lojas.AnyAsync(l => l.Cnpj == request.Cnpj.Trim() && l.Id != id, cancellationToken);
             if (cnpjExiste)
             {
@@ -251,16 +399,27 @@ public class LojaService : ILojaService
         if (request.EnderecoCompleto.Trim() != loja.EnderecoCompleto && (!request.Latitude.HasValue || !request.Longitude.HasValue))
         {
             var coords = await _geocodingService.GeocodeAddressAsync(request.EnderecoCompleto, cancellationToken);
-            if (coords.HasValue)
+            if (coords.HasValue && SegurancaValidacao.CoordenadasValidas(coords.Value.Latitude, coords.Value.Longitude))
             {
                 loja.Latitude = coords.Value.Latitude;
                 loja.Longitude = coords.Value.Longitude;
             }
+            else
+            {
+                return ApiResponse<LojaResponse>.Fail(
+                    "Não foi possível localizar as coordenadas do novo endereço. Informe rua, número, cidade e UF completos.");
+            }
         }
-        else
+        else if (request.Latitude.HasValue || request.Longitude.HasValue)
         {
-            if (request.Latitude.HasValue) loja.Latitude = request.Latitude.Value;
-            if (request.Longitude.HasValue) loja.Longitude = request.Longitude.Value;
+            var newLat = request.Latitude ?? loja.Latitude;
+            var newLon = request.Longitude ?? loja.Longitude;
+            if (!SegurancaValidacao.CoordenadasValidas(newLat, newLon))
+            {
+                return ApiResponse<LojaResponse>.Fail("Coordenadas geográficas inválidas.");
+            }
+            loja.Latitude = newLat;
+            loja.Longitude = newLon;
         }
 
         loja.NomeFantasia = request.NomeFantasia.Trim();
@@ -286,137 +445,240 @@ public class LojaService : ILojaService
 
     public async Task<ApiResponse<DashboardLojistaResponse>> ObterDashboardLojistaAsync(Guid lojaId, Guid usuarioId, CancellationToken cancellationToken = default)
     {
-        var loja = await _context.Lojas
+        var lojaInfo = await _context.Lojas
             .AsNoTracking()
-            .Include(l => l.Avaliacoes)
-            .Include(l => l.Estoques)
-                .ThenInclude(e => e.Peca)
-            .Include(l => l.Estoques)
-                .ThenInclude(e => e.Estatisticas)
-            .FirstOrDefaultAsync(l => l.Id == lojaId, cancellationToken);
+            .Where(l => l.Id == lojaId)
+            .Select(l => new
+            {
+                l.Id,
+                l.UsuarioId,
+                l.NomeFantasia,
+                TotalAvaliacoes = l.Avaliacoes.Count(),
+                MediaAvaliacao = l.Avaliacoes.Any() ? l.Avaliacoes.Average(a => (double)a.Nota) : 5.0
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (loja == null)
+        if (lojaInfo == null)
         {
             return ApiResponse<DashboardLojistaResponse>.Fail("Loja não encontrada.");
         }
 
-        if (loja.UsuarioId != usuarioId)
+        if (lojaInfo.UsuarioId != usuarioId)
         {
             return ApiResponse<DashboardLojistaResponse>.Fail("Acesso negado: esta loja pertence a outro lojista.");
         }
 
-        var totalProdutos = loja.Estoques.Count;
-        var totalEstoqueBaixo = loja.Estoques.Count(e => e.QuantidadeEstoque <= e.AlertaEstoqueMinimo);
-        var totalOfertasAtivas = loja.Estoques.Count(e => e.PromocaoAtiva || e.EmPromocao);
-
-        var totalVisualizacoes = loja.Estoques.SelectMany(e => e.Estatisticas).Sum(s => s.Visualizacoes);
-        var totalCliques = loja.Estoques.SelectMany(e => e.Estatisticas).Sum(s => s.Cliques);
-
-        var totalAvaliacoes = loja.Avaliacoes.Count;
-        var mediaAvaliacao = totalAvaliacoes > 0 ? Math.Round(loja.Avaliacoes.Average(a => a.Nota), 1) : 5.0;
-
-        var criticos = loja.Estoques
-            .Where(e => e.QuantidadeEstoque <= e.AlertaEstoqueMinimo)
-            .Select(e => new EstoqueItemResponse
-            {
-                Id = e.Id,
-                LojaId = e.LojaId,
-                NomeLoja = loja.NomeFantasia,
-                PecaId = e.PecaId,
-                NomePeca = e.Peca?.Nome ?? string.Empty,
-                CategoriaPeca = e.Peca?.Categoria ?? string.Empty,
-                Sku = e.Peca?.Sku,
-                QuantidadeEstoque = e.QuantidadeEstoque,
-                AlertaEstoqueMinimo = e.AlertaEstoqueMinimo,
-                PrecoVenda = e.PrecoVenda,
-                EmPromocao = e.EmPromocao,
-                PrecoPromocional = e.PrecoPromocional,
-                PrecoEfetivo = e.PrecoEfetivo,
-                PromocaoAtiva = e.PromocaoAtiva,
-                DataAtualizacao = e.DataAtualizacao
-            })
-            .ToList();
-
-        var maisAcessadas = loja.Estoques
-            .Select(e => new OfertaMaisAcessadaItem
-            {
-                EstoqueId = e.Id,
-                NomePeca = e.Peca?.Nome ?? string.Empty,
-                Preco = e.PrecoEfetivo,
-                Visualizacoes = e.Estatisticas.Sum(s => s.Visualizacoes),
-                Cliques = e.Estatisticas.Sum(s => s.Cliques)
-            })
-            .OrderByDescending(o => o.Cliques + o.Visualizacoes)
-            .Take(5)
-            .ToList();
-
         var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
         var limite24h = hoje.AddDays(-1);
 
-        // Visualizações e cliques reais das ofertas da loja nas últimas 24h
-        var stats24h = loja.Estoques
-            .SelectMany(e => e.Estatisticas)
-            .Where(s => s.DataRegistro >= limite24h)
-            .ToList();
-        var buscas24h = stats24h.Sum(s => s.Visualizacoes + s.Cliques);
+        // KPIs agregados do estoque diretamente no banco
+        var resumoEstoque = await _context.EstoqueLojas
+            .AsNoTracking()
+            .Where(e => e.LojaId == lojaId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalProdutos = g.Count(),
+                TotalEstoqueBaixo = g.Count(e => e.QuantidadeEstoque <= e.AlertaEstoqueMinimo),
+                TotalOfertasAtivas = g.Count(e =>
+                    e.EmPromocao ||
+                    (e.EmPromocao && e.PrecoPromocional.HasValue &&
+                     (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                     (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje)))
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var totalProdutos = resumoEstoque?.TotalProdutos ?? 0;
+        var totalEstoqueBaixo = resumoEstoque?.TotalEstoqueBaixo ?? 0;
+        var totalOfertasAtivas = resumoEstoque?.TotalOfertasAtivas ?? 0;
+
+        // Métricas agregadas no banco
+        var resumoStats = await _context.EstatisticasOferta
+            .AsNoTracking()
+            .Where(s => s.EstoqueLoja != null && s.EstoqueLoja.LojaId == lojaId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalViews = g.Sum(s => s.Visualizacoes),
+                TotalCliques = g.Sum(s => s.Cliques),
+                Buscas24h = g.Where(s => s.DataRegistro >= limite24h).Sum(s => s.Visualizacoes + s.Cliques)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var totalVisualizacoes = resumoStats?.TotalViews ?? 0;
+        var totalCliques = resumoStats?.TotalCliques ?? 0;
+        var buscas24h = resumoStats?.Buscas24h ?? 0;
         if (buscas24h == 0)
         {
             buscas24h = totalVisualizacoes + totalCliques;
         }
 
-        // Peças mais procuradas no Radar (cruzadas com o estoque da loja atual)
-        var catalogoPecas = await _context.Pecas
+        var totalAvaliacoes = lojaInfo.TotalAvaliacoes;
+        var mediaAvaliacao = Math.Round(lojaInfo.MediaAvaliacao, 1);
+
+        // Itens críticos (projeção direta)
+        var criticosRaw = await _context.EstoqueLojas
             .AsNoTracking()
-            .Include(p => p.Compatibilidades)
-                .ThenInclude(c => c.ModeloMoto)
-            .Include(p => p.Estoques)
-                .ThenInclude(e => e.Estatisticas)
+            .Where(e => e.LojaId == lojaId && e.QuantidadeEstoque <= e.AlertaEstoqueMinimo)
+            .OrderBy(e => e.QuantidadeEstoque)
+            .Select(e => new
+            {
+                e.Id,
+                e.LojaId,
+                e.PecaId,
+                NomePeca = e.Peca != null ? e.Peca.Nome : string.Empty,
+                CategoriaPeca = e.Peca != null ? e.Peca.Categoria : string.Empty,
+                Sku = e.Peca != null ? e.Peca.Sku : null,
+                e.QuantidadeEstoque,
+                e.AlertaEstoqueMinimo,
+                e.PrecoVenda,
+                e.EmPromocao,
+                e.PrecoPromocional,
+                e.DataInicioPromocao,
+                e.DataFimPromocao,
+                e.DataAtualizacao
+            })
             .ToListAsync(cancellationToken);
 
-        var estoquePorPeca = loja.Estoques.ToDictionary(e => e.PecaId, e => e);
-
-        var maisProcuradosRegiao = catalogoPecas
-            .Select((p, idx) =>
+        var criticos = criticosRaw.Select(e =>
+        {
+            var promoAtiva = e.EmPromocao && e.PrecoPromocional.HasValue &&
+                (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje);
+            return new EstoqueItemResponse
             {
-                var statsPeca = p.Estoques.SelectMany(e => e.Estatisticas).ToList();
-                var viewsGlobais = statsPeca.Sum(s => s.Visualizacoes);
-                var cliquesGlobais = statsPeca.Sum(s => s.Cliques);
-                var interacoesReais = viewsGlobais + cliquesGlobais;
+                Id = e.Id,
+                LojaId = e.LojaId,
+                NomeLoja = lojaInfo.NomeFantasia,
+                PecaId = e.PecaId,
+                NomePeca = e.NomePeca,
+                CategoriaPeca = e.CategoriaPeca,
+                Sku = e.Sku,
+                QuantidadeEstoque = e.QuantidadeEstoque,
+                AlertaEstoqueMinimo = e.AlertaEstoqueMinimo,
+                PrecoVenda = e.PrecoVenda,
+                EmPromocao = e.EmPromocao,
+                PrecoPromocional = e.PrecoPromocional,
+                PrecoEfetivo = promoAtiva ? e.PrecoPromocional!.Value : e.PrecoVenda,
+                PromocaoAtiva = promoAtiva,
+                DataAtualizacao = e.DataAtualizacao
+            };
+        }).ToList();
 
-                var comps = p.Compatibilidades
-                    .Where(c => c.ModeloMoto != null)
-                    .Select(c => $"{c.ModeloMoto!.Marca} {c.ModeloMoto.Modelo} ({c.ModeloMoto.AnoInicio}-{c.ModeloMoto.AnoFim ?? 2025})")
-                    .Distinct()
-                    .ToList();
-
-                estoquePorPeca.TryGetValue(p.Id, out var estLoja);
-
-                var crescimento = viewsGlobais > 0 
-                    ? Math.Min(100, (int)Math.Round((double)cliquesGlobais / viewsGlobais * 100))
-                    : 0;
-
-                return new ItemMaisProcuradoRegiao
-                {
-                    PecaId = p.Id,
-                    NomePeca = p.Nome,
-                    Categoria = p.Categoria,
-                    CompatibilidadeResumo = comps.Count > 0 ? string.Join(", ", comps) : "Universal",
-                    TotalBuscas7d = interacoesReais,
-                    CrescimentoPercentual = crescimento,
-                    QuantidadeEstoqueLoja = estLoja?.QuantidadeEstoque ?? 0,
-                    EstoqueIdLoja = estLoja?.Id,
-                    PrecoVendaLoja = estLoja?.PrecoEfetivo
-                };
+        // Top 5 ofertas mais acessadas da loja (agregação e Take(5) no banco)
+        var maisAcessadas = await _context.EstoqueLojas
+            .AsNoTracking()
+            .Where(e => e.LojaId == lojaId)
+            .Select(e => new
+            {
+                EstoqueId = e.Id,
+                NomePeca = e.Peca != null ? e.Peca.Nome : string.Empty,
+                Preco = (e.EmPromocao && e.PrecoPromocional.HasValue &&
+                         (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                         (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje))
+                    ? e.PrecoPromocional!.Value
+                    : e.PrecoVenda,
+                Visualizacoes = e.Estatisticas.Sum(s => (int?)s.Visualizacoes) ?? 0,
+                Cliques = e.Estatisticas.Sum(s => (int?)s.Cliques) ?? 0
             })
-            .OrderByDescending(x => x.TotalBuscas7d)
-            .ThenBy(x => x.NomePeca)
+            .OrderByDescending(o => o.Cliques + o.Visualizacoes)
+            .Take(5)
+            .Select(o => new OfertaMaisAcessadaItem
+            {
+                EstoqueId = o.EstoqueId,
+                NomePeca = o.NomePeca,
+                Preco = o.Preco,
+                Visualizacoes = o.Visualizacoes,
+                Cliques = o.Cliques
+            })
+            .ToListAsync(cancellationToken);
+
+        // Top 12 peças mais procuradas no Radar (ranking e Take(12) no banco)
+        var topPecas = await _context.Pecas
+            .AsNoTracking()
+            .Select(p => new
+            {
+                p.Id,
+                p.Nome,
+                p.Categoria,
+                ViewsGlobais = p.Estoques.SelectMany(e => e.Estatisticas).Sum(s => (int?)s.Visualizacoes) ?? 0,
+                CliquesGlobais = p.Estoques.SelectMany(e => e.Estatisticas).Sum(s => (int?)s.Cliques) ?? 0
+            })
+            .OrderByDescending(x => x.ViewsGlobais + x.CliquesGlobais)
+            .ThenBy(x => x.Nome)
             .Take(12)
-            .ToList();
+            .ToListAsync(cancellationToken);
+
+        var topPecaIds = topPecas.Select(p => p.Id).ToList();
+
+        var compsPorPeca = topPecaIds.Count == 0
+            ? new Dictionary<int, List<string>>()
+            : (await _context.CompatibilidadesPecaMoto
+                .AsNoTracking()
+                .Where(c => topPecaIds.Contains(c.PecaId) && c.ModeloMoto != null)
+                .Select(c => new
+                {
+                    c.PecaId,
+                    Label = c.ModeloMoto!.Marca + " " + c.ModeloMoto.Modelo + " (" + c.ModeloMoto.AnoInicio + "-" + (c.ModeloMoto.AnoFim ?? 2025) + ")"
+                })
+                .ToListAsync(cancellationToken))
+                .GroupBy(x => x.PecaId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Label).Distinct().ToList());
+
+        var estoqueLojaPorPeca = topPecaIds.Count == 0
+            ? new Dictionary<int, (Guid Id, int QuantidadeEstoque, decimal PrecoEfetivo)>()
+            : (await _context.EstoqueLojas
+                .AsNoTracking()
+                .Where(e => e.LojaId == lojaId && topPecaIds.Contains(e.PecaId))
+                .Select(e => new
+                {
+                    e.PecaId,
+                    e.Id,
+                    e.QuantidadeEstoque,
+                    e.PrecoVenda,
+                    e.EmPromocao,
+                    e.PrecoPromocional,
+                    e.DataInicioPromocao,
+                    e.DataFimPromocao
+                })
+                .ToListAsync(cancellationToken))
+                .GroupBy(e => e.PecaId)
+                .ToDictionary(g => g.Key, g =>
+                {
+                    var first = g.First();
+                    var promoAtiva = first.EmPromocao && first.PrecoPromocional.HasValue &&
+                        (!first.DataInicioPromocao.HasValue || first.DataInicioPromocao.Value <= hoje) &&
+                        (!first.DataFimPromocao.HasValue || first.DataFimPromocao.Value >= hoje);
+                    return (Id: first.Id, QuantidadeEstoque: first.QuantidadeEstoque, PrecoEfetivo: promoAtiva ? first.PrecoPromocional!.Value : first.PrecoVenda);
+                });
+
+        var maisProcuradosRegiao = topPecas.Select(p =>
+        {
+            var interacoesReais = p.ViewsGlobais + p.CliquesGlobais;
+            compsPorPeca.TryGetValue(p.Id, out var comps);
+            var temEstoque = estoqueLojaPorPeca.TryGetValue(p.Id, out var estLoja);
+            var crescimento = p.ViewsGlobais > 0
+                ? Math.Min(100, (int)Math.Round((double)p.CliquesGlobais / p.ViewsGlobais * 100))
+                : 0;
+
+            return new ItemMaisProcuradoRegiao
+            {
+                PecaId = p.Id,
+                NomePeca = p.Nome,
+                Categoria = p.Categoria,
+                CompatibilidadeResumo = comps != null && comps.Count > 0 ? string.Join(", ", comps) : "Universal",
+                TotalBuscas7d = interacoesReais,
+                CrescimentoPercentual = crescimento,
+                QuantidadeEstoqueLoja = temEstoque ? estLoja.QuantidadeEstoque : 0,
+                EstoqueIdLoja = temEstoque ? estLoja.Id : null,
+                PrecoVendaLoja = temEstoque ? estLoja.PrecoEfetivo : null
+            };
+        }).ToList();
 
         var dashboard = new DashboardLojistaResponse
         {
-            LojaId = loja.Id,
-            NomeLoja = loja.NomeFantasia,
+            LojaId = lojaInfo.Id,
+            NomeLoja = lojaInfo.NomeFantasia,
             TotalProdutosCadastrados = totalProdutos,
             TotalItensEstoqueBaixo = totalEstoqueBaixo,
             TotalOfertasAtivas = totalOfertasAtivas,

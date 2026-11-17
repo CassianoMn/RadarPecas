@@ -15,13 +15,15 @@ export interface RegisterLojistaInput {
   email: string;
   senha: string;
   enderecoCompleto?: string;
+  latitude?: number;
+  longitude?: number;
   telefoneContato?: string;
 }
 
 export interface AuthContextValue {
   user: User | null;
   loading: boolean;
-  login: (email: string, senha: string) => Promise<User>;
+  login: (email: string, senha: string, remember?: boolean) => Promise<User>;
   registerMotociclista: (nome: string, email: string, senha: string) => Promise<User>;
   registerLojista: (input: RegisterLojistaInput) => Promise<User>;
   updateProfile: (input: UpdateProfileInput) => Promise<void>;

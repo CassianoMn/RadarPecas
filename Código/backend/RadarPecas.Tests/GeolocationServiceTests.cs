@@ -54,4 +54,16 @@ public class GeolocationServiceTests
         Assert.True(dentroRaio30Km);
         Assert.False(dentroRaio10Km);
     }
+
+    [Fact]
+    public void CalcularBoundingBox_DeveConterPontosDentroDoRaio()
+    {
+        var latCentro = -10.6850m;
+        var lonCentro = -37.4252m;
+
+        var (minLat, maxLat, minLon, maxLon) = _service.CalcularBoundingBox(latCentro, lonCentro, 15m);
+
+        Assert.True(minLat < latCentro && latCentro < maxLat);
+        Assert.True(minLon < lonCentro && lonCentro < maxLon);
+    }
 }

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
 import type { Loja } from '../types';
 import { Button, ErrorState, Loading } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 
 export function AvaliarLojaPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +20,7 @@ export function AvaliarLojaPage() {
   const [recomenda, setRecomenda] = useState<boolean>(true);
   const [enviando, setEnviando] = useState(false);
   const [formError, setFormError] = useState('');
+  const [enviadoSucesso, setEnviadoSucesso] = useState(false);
 
   const labelsNotas: Record<number, string> = {
     1: 'Muito Ruim (1/5)',
@@ -54,8 +56,10 @@ export function AvaliarLojaPage() {
           recomenda,
         }),
       });
-      alert('Avaliação enviada com sucesso! Obrigado pela colaboração.');
-      navigate(`/lojas/${id}`);
+      setEnviadoSucesso(true);
+      setTimeout(() => {
+        navigate(`/lojas/${id}`);
+      }, 1400);
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Erro ao enviar avaliação.');
     } finally {
@@ -90,9 +94,11 @@ export function AvaliarLojaPage() {
           }}
         >
           {loja.fotoPerfilUrl ? (
-            <img
+            <SmartImage
               src={loja.fotoPerfilUrl}
               alt={loja.nomeFantasia}
+              width={60}
+              height={60}
               style={{
                 width: 60,
                 height: 60,
@@ -193,6 +199,24 @@ export function AvaliarLojaPage() {
 
           {formError ? <ErrorState text={formError} /> : null}
 
+          {enviadoSucesso && (
+            <div
+              role="status"
+              style={{
+                background: '#ecfdf5',
+                border: '1px solid #a7f3d0',
+                color: '#065f46',
+                borderRadius: 'var(--radius-sm)',
+                padding: '12px 14px',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                marginTop: 12,
+              }}
+            >
+              Avaliação enviada com sucesso! Redirecionando para a página da loja...
+            </div>
+          )}
+
           <div style={{ borderTop: '1px solid var(--border)', margin: '20px 0' }} />
 
           {/* Botões de Ação */}
@@ -206,8 +230,8 @@ export function AvaliarLojaPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" block disabled={enviando} style={{ padding: '12px' }}>
-              {enviando ? 'Enviando Avaliação...' : 'Enviar Avaliação'}
+            <Button type="submit" block disabled={enviando || enviadoSucesso} style={{ padding: '12px' }}>
+              {enviando ? 'Enviando Avaliação...' : enviadoSucesso ? 'Enviado!' : 'Enviar Avaliação'}
             </Button>
           </div>
         </form>

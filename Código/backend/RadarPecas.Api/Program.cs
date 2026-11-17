@@ -2,11 +2,13 @@ using System.Globalization;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RadarPecas.Api.Middlewares;
+using RadarPecas.Application.DTOs.Common;
 using RadarPecas.Application.Interfaces;
 using RadarPecas.Application.Services;
 using RadarPecas.Infrastructure.Data;
@@ -128,7 +130,20 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // 5. Configuração de Controllers e OpenAPI / Swagger com suporte a Bearer Token
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Campo inválido." : e.ErrorMessage)
+                .Distinct()
+                .ToList();
+            var message = errors.FirstOrDefault() ?? "Dados da requisição inválidos.";
+            return new BadRequestObjectResult(ApiResponse<object>.Fail(message, errors));
+        };
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

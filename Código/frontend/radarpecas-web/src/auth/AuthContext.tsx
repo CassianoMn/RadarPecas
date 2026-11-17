@@ -25,7 +25,7 @@ interface LoginResponse {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
     async function load() {
@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void load();
   }, []);
 
-  const login = useCallback(async (email: string, senha: string): Promise<User> => {
+  const login = useCallback(async (email: string, senha: string, remember = true): Promise<User> => {
     const data = await api<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, senha }),
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!data?.token || !data?.userId) {
       throw new ApiError('Resposta de login inválida.', 500);
     }
-    setToken(data.token);
+    setToken(data.token, remember);
     const loggedUser: User = {
       id: data.userId,
       nome: data.nome,
@@ -96,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       senha: string;
       enderecoCompleto?: string;
+      latitude?: number;
+      longitude?: number;
       telefoneContato?: string;
     }): Promise<User> => {
       const data = await api<LoginResponse>('/auth/register-lojista', {
@@ -108,6 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           emailContato: input.email,
           senha: input.senha,
           enderecoCompleto: input.enderecoCompleto,
+          latitude: input.latitude,
+          longitude: input.longitude,
           telefoneContato: input.telefoneContato,
         }),
       });
@@ -164,6 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
+    if (typeof caches !== 'undefined') {
+      void caches.keys().then((keys) => {
+        keys
+          .filter((key) => key.startsWith('radarpecas-api-'))
+          .forEach((key) => void caches.delete(key));
+      });
+    }
   }, []);
 
   const value = useMemo(

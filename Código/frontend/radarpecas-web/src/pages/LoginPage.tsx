@@ -4,10 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ApiError } from '../lib/api';
 import { useAuth } from '../auth/useAuth';
 import {
-  AppleIcon,
   Button,
   ErrorState,
-  GoogleIcon,
   InputWithIcon,
   LockIcon,
   MailIcon,
@@ -21,7 +19,8 @@ export function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [lembrarMe, setLembrarMe] = useState(false);
+  const [lembrarMe, setLembrarMe] = useState(true);
+  const [showResetInfo, setShowResetInfo] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -32,7 +31,7 @@ export function LoginPage() {
     setError('');
     setSending(true);
     try {
-      const loggedUser = await login(email, senha);
+      const loggedUser = await login(email, senha, lembrarMe);
       if (loggedUser.tipoUsuario === 'LOJISTA' && from === '/') {
         navigate('/lojista', { replace: true });
       } else {
@@ -43,10 +42,6 @@ export function LoginPage() {
     } finally {
       setSending(false);
     }
-  }
-
-  function handleSocialLogin(provider: string) {
-    alert(`Autenticação com ${provider} estará disponível em breve na versão de produção.`);
   }
 
   return (
@@ -84,7 +79,7 @@ export function LoginPage() {
           />
 
           {/* Lembrar-me e Esqueceu a Senha */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', gap: 12, flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', color: 'var(--text)' }}>
               <input
                 type="checkbox"
@@ -93,17 +88,40 @@ export function LoginPage() {
               />
               Lembrar-me
             </label>
-            <a
-              href="#esqueceu-senha"
-              onClick={(e) => {
-                e.preventDefault();
-                alert('Instruções para redefinir a senha serão enviadas para o seu e-mail cadastrado.');
+            <button
+              type="button"
+              onClick={() => setShowResetInfo((prev) => !prev)}
+              aria-expanded={showResetInfo}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                color: 'var(--primary)',
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontSize: '0.85rem',
               }}
-              style={{ color: 'var(--primary)', fontWeight: 600 }}
             >
               Esqueceu a senha?
-            </a>
+            </button>
           </div>
+
+          {showResetInfo && (
+            <div
+              role="status"
+              style={{
+                background: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                color: '#0369a1',
+                borderRadius: 'var(--radius-sm)',
+                padding: '10px 12px',
+                fontSize: '0.82rem',
+                lineHeight: 1.45,
+              }}
+            >
+              Para redefinir sua senha nesta versão acadêmica, acesse seu perfil após entrar ou entre em contato com o suporte do RadarPeças informando seu e-mail cadastrado.
+            </div>
+          )}
 
           {error ? <ErrorState text={error} /> : null}
 
@@ -111,33 +129,6 @@ export function LoginPage() {
             {sending ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
-
-        {/* Divisor "Ou continue com" */}
-        <div className="auth-divider-line">
-          <span>Ou continue com</span>
-        </div>
-
-        {/* Botões Sociais Google & Apple */}
-        <div className="social-auth-row">
-          <button
-            type="button"
-            className="social-auth-btn"
-            onClick={() => handleSocialLogin('Google')}
-            title="Entrar com Google"
-            aria-label="Entrar com Google"
-          >
-            <GoogleIcon size={20} />
-          </button>
-          <button
-            type="button"
-            className="social-auth-btn"
-            onClick={() => handleSocialLogin('Apple')}
-            title="Entrar com Apple"
-            aria-label="Entrar com Apple"
-          >
-            <AppleIcon size={20} />
-          </button>
-        </div>
 
         {/* Link para Cadastro */}
         <div style={{ textAlign: 'center', marginTop: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>

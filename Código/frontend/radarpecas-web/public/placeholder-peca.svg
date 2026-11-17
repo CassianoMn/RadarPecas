@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 240" width="320" height="240" role="img" aria-label="Imagem indisponível">
+  <rect width="320" height="240" rx="12" fill="#f1f5f9"/>
+  <g transform="translate(160 112)" stroke="#006375" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.72">
+    <circle cx="0" cy="0" r="24"/>
+    <circle cx="0" cy="0" r="9"/>
+    <path d="M0 -34v10M0 24v10M-34 0h10M24 0h10M-24 -24l7 7M17 17l7 7M24 -24l-7 7M-17 17l-7 7"/>
+  </g>
+  <text x="160" y="176" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#64748b">
+    RadarPeças
+  </text>
+</svg>

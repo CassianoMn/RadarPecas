@@ -42,6 +42,7 @@ import {
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/useAuth';
 import { Button, ErrorState, Field, TextInput } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 import type { EstoqueItem, Loja, ModeloMoto, Peca } from '../types';
 
 type LojistaTab =
@@ -217,6 +218,10 @@ function parseHorarios(raw?: string | null): HorarioDia[] {
   return DEFAULT_HORARIOS;
 }
 
+function getCategoriaEstoque(item: EstoqueItemExtended): string {
+  return item.categoriaPeca || item.categoria || '';
+}
+
 function renderCategoryIcon(categoriaNome?: string | null, size = 18) {
   const lower = (categoriaNome || '').toLowerCase();
   if (lower.includes('freio') || lower.includes('pastilha') || lower.includes('disco')) {
@@ -235,7 +240,7 @@ function renderCategoryIcon(categoriaNome?: string | null, size = 18) {
 }
 
 export function LojistaPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<LojistaTab>('resumo');
 
   const [loja, setLoja] = useState<Loja | null>(null);
@@ -334,72 +339,71 @@ export function LojistaPage() {
     if (!silent) setLoading(true);
     setError('');
     try {
-      const [minhaLojaRes, lojasRes, pecasPaged, modelosData] = await Promise.all([
-        api<Loja>('/lojas/minha-loja').catch(() => null),
-        api<Loja[]>('/lojas').catch(() => [] as Loja[]),
-        api<{ items?: Peca[] } | Peca[]>('/pecas?page=1&pageSize=100').catch(() => [] as Peca[]),
-        api<{ items?: ModeloMoto[] } | ModeloMoto[]>('/garagem/modelos').catch(() => [] as ModeloMoto[]),
+      const falhas: string[] = [];
+      const [minhaLojaRes, pecasPaged, modelosData] = await Promise.all([
+        api<Loja>('/lojas/minha-loja').catch((err) => {
+          falhas.push(err instanceof ApiError ? err.message : 'loja');
+          return null;
+        }),
+        api<{ items?: Peca[] } | Peca[]>('/pecas?page=1&pageSize=100').catch(() => {
+          falhas.push('catálogo de peças');
+          return [] as Peca[];
+        }),
+        api<{ items?: ModeloMoto[] } | ModeloMoto[]>('/modelos-moto').catch(() => {
+          falhas.push('modelos de moto');
+          return [] as ModeloMoto[];
+        }),
       ]);
 
       const listaPecas = Array.isArray(pecasPaged) ? pecasPaged : pecasPaged?.items || [];
       const listaModelos = Array.isArray(modelosData) ? modelosData : modelosData?.items || [];
-      const listaLojas = Array.isArray(lojasRes) ? lojasRes : [];
 
       setPecasCatalogo(listaPecas);
       setModelosMoto(listaModelos);
 
-      let minhaLoja =
-        minhaLojaRes ||
-        listaLojas.find((l) => user?.lojaId && l.id === user.lojaId) ||
-        listaLojas.find((l) => user?.id && l.usuarioId === user.id) ||
-        null;
-
-      if (!minhaLoja && user) {
-        minhaLoja = await api<Loja>('/lojas', {
-          method: 'POST',
-          body: JSON.stringify({
-            nomeFantasia: user.nome || 'MotoPeças Expresso',
-            cnpj: '12.345.678/0001-99',
-            telefoneContato: '(11) 98765-4321',
-            emailContato: user.email,
-            enderecoCompleto: 'Av. dos Bandeirantes, 1450 - Vila Olímpia, São Paulo - SP',
-            latitude: -23.5951,
-            longitude: -46.687,
-            horariosFuncionamento: JSON.stringify(DEFAULT_HORARIOS),
-          }),
-        });
-        await refreshUser().catch(() => {});
+      if (!minhaLojaRes) {
+        setLoja(null);
+        setError('Não foi possível localizar o cadastro da sua loja. Verifique sua conta de lojista ou tente recarregar.');
+        return;
       }
 
-      if (minhaLoja) {
-        setLoja(minhaLoja);
-        setPfNomeFantasia(minhaLoja.nomeFantasia || '');
-        setPfFotoPerfilUrl(minhaLoja.fotoPerfilUrl || '');
-        setPfTelefone(minhaLoja.telefoneContato || '(11) 98765-4321');
-        setPfEmailContato(minhaLoja.emailContato || user?.email || '');
-        setPfEndereco(minhaLoja.enderecoCompleto || '');
-        setPfHorarios(parseHorarios(minhaLoja.horariosFuncionamento));
+      setLoja(minhaLojaRes);
+      setPfNomeFantasia(minhaLojaRes.nomeFantasia || '');
+      setPfFotoPerfilUrl(minhaLojaRes.fotoPerfilUrl || '');
+      setPfTelefone(minhaLojaRes.telefoneContato || '');
+      setPfEmailContato(minhaLojaRes.emailContato || user?.email || '');
+      setPfEndereco(minhaLojaRes.enderecoCompleto || '');
+      setPfHorarios(parseHorarios(minhaLojaRes.horariosFuncionamento));
 
-        const [estPaged, dashRes] = await Promise.all([
-          api<{ items: EstoqueItemExtended[] }>(`/lojas/${minhaLoja.id}/estoque?page=1&pageSize=100`).catch(() => ({ items: [] as EstoqueItemExtended[] })),
-          api<DashboardLojistaResponse>(`/lojas/${minhaLoja.id}/dashboard`).catch(() => null),
-        ]);
+      const [estPaged, dashRes] = await Promise.all([
+        api<{ items: EstoqueItemExtended[] }>(`/lojas/${minhaLojaRes.id}/estoque?page=1&pageSize=100`).catch((err) => {
+          falhas.push(err instanceof ApiError ? err.message : 'estoque');
+          return { items: [] as EstoqueItemExtended[] };
+        }),
+        api<DashboardLojistaResponse>(`/lojas/${minhaLojaRes.id}/dashboard`).catch((err) => {
+          falhas.push(err instanceof ApiError ? err.message : 'métricas do painel');
+          return null;
+        }),
+      ]);
 
-        const items = estPaged?.items || [];
-        setEstoque(items);
-        setDashboard(dashRes);
+      const items = estPaged?.items || [];
+      setEstoque(items);
+      setDashboard(dashRes);
 
-        if (items.length > 0) {
-          setOfertaEstoqueId((prev) => prev || items[0].id);
-          setOfertaPrecoPromo((prev) => prev || String(Number((items[0].precoVenda * 0.8).toFixed(2))));
-        }
+      if (items.length > 0) {
+        setOfertaEstoqueId((prev) => prev || items[0].id);
+        setOfertaPrecoPromo((prev) => prev || String(Number((items[0].precoVenda * 0.8).toFixed(2))));
+      }
+
+      if (falhas.length > 0) {
+        setError(`Alguns dados não puderam ser carregados (${falhas.join(', ')}).`);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Erro ao carregar dados do painel do lojista.');
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [user, refreshUser]);
+  }, [user]);
 
   useEffect(() => {
     void carregarTudo();
@@ -657,7 +661,7 @@ export function LojistaPage() {
     const headers = ['ID,Produto,Categoria,SKU,Estoque,Preco,EmPromocao,PrecoPromocional'];
     const rows = estoque.map(
       (i) =>
-        `${i.id},"${i.nomePeca.replace(/"/g, '""')}","${i.categoria || ''}","${i.sku || ''}",${i.quantidadeEstoque},${i.precoVenda},${i.emPromocao},${i.precoPromocional ?? ''}`,
+        `${i.id},"${i.nomePeca.replace(/"/g, '""')}","${getCategoriaEstoque(i)}","${i.sku || ''}",${i.quantidadeEstoque},${i.precoVenda},${i.emPromocao},${i.precoPromocional ?? ''}`,
     );
     const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -669,7 +673,7 @@ export function LojistaPage() {
   }
 
   const categoriasDisponiveis = useMemo(() => {
-    const fromItems = estoque.map((i) => i.categoria).filter(Boolean);
+    const fromItems = estoque.map((i) => getCategoriaEstoque(i)).filter(Boolean);
     return Array.from(new Set([...CATEGORIAS_PADRAO, ...fromItems]));
   }, [estoque]);
 
@@ -683,7 +687,7 @@ export function LojistaPage() {
 
       const matchCat =
         !filtroCategoriaEstoque ||
-        (item.categoria || '').toLowerCase() === filtroCategoriaEstoque.toLowerCase();
+        getCategoriaEstoque(item).toLowerCase() === filtroCategoriaEstoque.toLowerCase();
 
       let matchStatus = true;
       if (filtroStatusEstoque === 'alto') matchStatus = item.quantidadeEstoque > 10;
@@ -695,13 +699,25 @@ export function LojistaPage() {
     });
   }, [estoque, buscaEstoque, filtroCategoriaEstoque, filtroStatusEstoque]);
 
+  const ESTOQUE_PAGE_SIZE = 10;
+  const totalPaginasEstoque = Math.max(1, Math.ceil(estoqueFiltrado.length / ESTOQUE_PAGE_SIZE));
+  const paginaEstoqueSegura = Math.min(paginaEstoque, totalPaginasEstoque);
+  const estoquePaginado = useMemo(() => {
+    const start = (paginaEstoqueSegura - 1) * ESTOQUE_PAGE_SIZE;
+    return estoqueFiltrado.slice(start, start + ESTOQUE_PAGE_SIZE);
+  }, [estoqueFiltrado, paginaEstoqueSegura]);
+
+  useEffect(() => {
+    setPaginaEstoque(1);
+  }, [buscaEstoque, filtroCategoriaEstoque, filtroStatusEstoque]);
+
   const ofertasAtivasList = useMemo(() => {
     const base = estoque.filter((i) => i.emPromocao);
     const filtered = base.filter(
       (i) =>
         !buscaOfertas.trim() ||
         i.nomePeca.toLowerCase().includes(buscaOfertas.toLowerCase()) ||
-        (i.categoria || '').toLowerCase().includes(buscaOfertas.toLowerCase()),
+        getCategoriaEstoque(i).toLowerCase().includes(buscaOfertas.toLowerCase()),
     );
     if (filtroOfertasTab === 'populares') {
       return [...filtered].sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0));
@@ -865,9 +881,11 @@ export function LojistaPage() {
             }}
           >
             {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
-              <img
+              <SmartImage
                 src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
                 alt={loja?.nomeFantasia || 'Loja'}
+                width={38}
+                height={38}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
             ) : (
@@ -941,7 +959,7 @@ export function LojistaPage() {
       <div className="lojista-main">
         {error && (
           <div style={{ marginBottom: 16 }}>
-            <ErrorState text={error} />
+            <ErrorState text={error} onRetry={() => void carregarTudo()} />
           </div>
         )}
         {successMsg && (
@@ -1114,7 +1132,7 @@ export function LojistaPage() {
                                     flexShrink: 0,
                                   }}
                                 >
-                                  {renderCategoryIcon(item.categoria, 18)}
+                                  {renderCategoryIcon(getCategoriaEstoque(item), 18)}
                                 </div>
                                 <div>
                                   <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.nomePeca}</div>
@@ -1728,7 +1746,7 @@ export function LojistaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {estoqueFiltrado.map((item) => {
+                  {estoquePaginado.map((item) => {
                     const statusBadge =
                       item.quantidadeEstoque === 0
                         ? { text: 'Zerado', bg: '#e2e8f0', color: '#475569' }
@@ -1755,7 +1773,7 @@ export function LojistaPage() {
                                 flexShrink: 0,
                               }}
                             >
-                              {renderCategoryIcon(item.categoria, 18)}
+                              {renderCategoryIcon(getCategoriaEstoque(item), 18)}
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.nomePeca}</div>
@@ -1881,17 +1899,35 @@ export function LojistaPage() {
                 }}
               >
                 <span>
-                  Mostrando 1-{estoqueFiltrado.length} de {estoque.length} produtos cadastrados
+                  {estoqueFiltrado.length === 0
+                    ? 'Nenhum produto encontrado'
+                    : `Mostrando ${(paginaEstoqueSegura - 1) * ESTOQUE_PAGE_SIZE + 1}-${Math.min(
+                        paginaEstoqueSegura * ESTOQUE_PAGE_SIZE,
+                        estoqueFiltrado.length,
+                      )} de ${estoqueFiltrado.length} produtos`}
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button
                     type="button"
-                    onClick={() => setPaginaEstoque(1)}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    aria-label="Página anterior"
+                    disabled={paginaEstoqueSegura <= 1}
+                    onClick={() => setPaginaEstoque((p) => Math.max(1, p - 1))}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: paginaEstoqueSegura <= 1 ? 'not-allowed' : 'pointer',
+                      opacity: paginaEstoqueSegura <= 1 ? 0.5 : 1,
+                    }}
                   >
                     <ChevronLeft size={14} />
                   </button>
-                  {[1, 2, 3].map((p) => (
+                  {Array.from({ length: totalPaginasEstoque }, (_, idx) => idx + 1).map((p) => (
                     <button
                       key={p}
                       type="button"
@@ -1900,9 +1936,9 @@ export function LojistaPage() {
                         width: 28,
                         height: 28,
                         borderRadius: 6,
-                        border: paginaEstoque === p ? 'none' : '1px solid #cbd5e1',
-                        background: paginaEstoque === p ? '#006375' : '#ffffff',
-                        color: paginaEstoque === p ? '#ffffff' : '#475569',
+                        border: paginaEstoqueSegura === p ? 'none' : '1px solid #cbd5e1',
+                        background: paginaEstoqueSegura === p ? '#006375' : '#ffffff',
+                        color: paginaEstoqueSegura === p ? '#ffffff' : '#475569',
                         fontWeight: 700,
                         cursor: 'pointer',
                       }}
@@ -1912,8 +1948,21 @@ export function LojistaPage() {
                   ))}
                   <button
                     type="button"
-                    onClick={() => setPaginaEstoque((p) => Math.min(3, p + 1))}
-                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    aria-label="Próxima página"
+                    disabled={paginaEstoqueSegura >= totalPaginasEstoque}
+                    onClick={() => setPaginaEstoque((p) => Math.min(totalPaginasEstoque, p + 1))}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: paginaEstoqueSegura >= totalPaginasEstoque ? 'not-allowed' : 'pointer',
+                      opacity: paginaEstoqueSegura >= totalPaginasEstoque ? 0.5 : 1,
+                    }}
                   >
                     <ChevronRight size={14} />
                   </button>
@@ -2171,7 +2220,7 @@ export function LojistaPage() {
                       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-                            {oferta.categoria || 'PEÇAS'}
+                            {getCategoriaEstoque(oferta) || 'PEÇAS'}
                           </span>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button
@@ -2376,7 +2425,7 @@ export function LojistaPage() {
                               flexShrink: 0,
                             }}
                           >
-                            {renderCategoryIcon(itemSelecionadoOferta.categoria, 20)}
+                            {renderCategoryIcon(getCategoriaEstoque(itemSelecionadoOferta), 20)}
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <strong style={{ color: '#0f172a', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemSelecionadoOferta.nomePeca}</strong>
@@ -3177,13 +3226,12 @@ export function LojistaPage() {
                       }}
                     >
                       {pfFotoPerfilUrl || loja?.fotoPerfilUrl ? (
-                        <img
+                        <SmartImage
                           src={pfFotoPerfilUrl || loja?.fotoPerfilUrl || ''}
                           alt={loja?.nomeFantasia || 'Foto de Perfil'}
+                          width={96}
+                          height={96}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).style.display = 'none';
-                          }}
                         />
                       ) : (
                         <>

@@ -63,12 +63,9 @@ public class BuscaRecomendacaoService : IBuscaRecomendacaoService
             }
         }
 
-        // Consulta base de ofertas ativas
+        // Consulta base de ofertas ativas (sem Include de Avaliacoes para evitar OOM)
         var query = _context.EstoqueLojas
             .AsNoTracking()
-            .Include(e => e.Peca)
-            .Include(e => e.Loja)
-                .ThenInclude(l => l!.Avaliacoes)
             .Where(e => e.Loja != null && e.Loja.Ativa && e.Peca != null);
 
         // Filtro de estoque disponível
@@ -77,32 +74,63 @@ public class BuscaRecomendacaoService : IBuscaRecomendacaoService
             query = query.Where(e => e.QuantidadeEstoque > 0);
         }
 
-        // Filtro textual
+        // Filtro textual via ILike/trigram no banco
         if (!string.IsNullOrWhiteSpace(filtros.Termo))
         {
-            var t = filtros.Termo.Trim().ToLower();
-            query = query.Where(e =>
-                e.Peca!.Nome.ToLower().Contains(t) ||
-                (e.Peca.Descricao != null && e.Peca.Descricao.ToLower().Contains(t)) ||
-                (e.Peca.Sku != null && e.Peca.Sku.ToLower().Contains(t)) ||
-                (e.Peca.CodigoEan != null && e.Peca.CodigoEan.Contains(t)) ||
-                e.Peca.Categoria.ToLower().Contains(t) ||
-                e.Loja!.NomeFantasia.ToLower().Contains(t));
+            query = _context.FiltrarPorTexto(
+                query,
+                filtros.Termo,
+                e => e.Peca!.Nome,
+                e => e.Peca!.Descricao,
+                e => e.Peca!.Sku,
+                e => e.Peca!.CodigoEan,
+                e => e.Peca!.Categoria,
+                e => e.Loja!.NomeFantasia);
         }
 
-        // Filtro de categoria
+        // Filtro de categoria (usa índice B-tree em lower(categoria))
         if (!string.IsNullOrWhiteSpace(filtros.Categoria))
         {
-            query = query.Where(e => e.Peca!.Categoria.ToLower() == filtros.Categoria.Trim().ToLower());
+            var catLower = filtros.Categoria.Trim().ToLower();
+            query = query.Where(e => e.Peca!.Categoria.ToLower() == catLower);
         }
+
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
 
         // Filtro de promoção
         if (filtros.ApenasPromocoes)
         {
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
             query = query.Where(e => e.EmPromocao &&
+                e.PrecoPromocional.HasValue &&
                 (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
                 (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje));
+        }
+
+        // Filtro de preço máximo efetivo traduzível para SQL
+        if (filtros.PrecoMaximo.HasValue)
+        {
+            var max = filtros.PrecoMaximo.Value;
+            query = query.Where(e =>
+                ((e.EmPromocao && e.PrecoPromocional.HasValue &&
+                  (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                  (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje))
+                    ? e.PrecoPromocional!.Value
+                    : e.PrecoVenda) <= max);
+        }
+
+        // Filtro de marca/fabricante no banco
+        if (!string.IsNullOrWhiteSpace(filtros.Marca))
+        {
+            var marcas = filtros.Marca.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (marcas.Length > 0)
+            {
+                query = _context.FiltrarPorTermosQualquer(
+                    query,
+                    marcas,
+                    e => e.Peca!.Nome,
+                    e => e.Peca!.Descricao,
+                    e => e.Peca!.Sku);
+            }
         }
 
         // Princípio 1: Compatibilidade antes de recomendação
@@ -114,135 +142,178 @@ public class BuscaRecomendacaoService : IBuscaRecomendacaoService
             query = query.Where(e => idsCompativeis.Contains(e.PecaId));
         }
 
-        var ofertasDb = await query.ToListAsync(cancellationToken);
-
-        // Mapeamento e enriquecimento em memória (distâncias, scores e ordenação)
-        var itens = new List<OfertaBuscaItemResponse>();
-
-        foreach (var e in ofertasDb)
+        // Pré-filtro espacial via bounding box (aproveita índice composto ativa + latitude + longitude)
+        bool hasUserCoords = filtros.UserLatitude.HasValue && filtros.UserLongitude.HasValue;
+        if (hasUserCoords && filtros.RaioKm.HasValue && filtros.RaioKm.Value > 0)
         {
-            var loja = e.Loja!;
-            var peca = e.Peca!;
+            var (minLat, maxLat, minLon, maxLon) = _geolocationService.CalcularBoundingBox(
+                filtros.UserLatitude!.Value,
+                filtros.UserLongitude!.Value,
+                filtros.RaioKm.Value);
 
-            // Filtro de preço máximo efetivo
-            if (filtros.PrecoMaximo.HasValue && e.PrecoEfetivo > filtros.PrecoMaximo.Value)
+            query = query.Where(e =>
+                e.Loja!.Latitude >= minLat && e.Loja.Latitude <= maxLat &&
+                e.Loja.Longitude >= minLon && e.Loja.Longitude <= maxLon);
+        }
+
+        const double degToRad = Math.PI / 180.0;
+        double uLatRad = hasUserCoords ? (double)filtros.UserLatitude!.Value * degToRad : 0.0;
+        double uLonRad = hasUserCoords ? (double)filtros.UserLongitude!.Value * degToRad : 0.0;
+        double cosULat = hasUserCoords ? Math.Cos(uLatRad) : 1.0;
+
+        // Projeção SQL com cálculo de preço efetivo, promoção ativa, média de avaliação e distância Haversine
+        var projetada = query.Select(e => new
+        {
+            EstoqueId = e.Id,
+            PecaId = e.Peca!.Id,
+            NomePeca = e.Peca.Nome,
+            Categoria = e.Peca.Categoria,
+            FotoPecaUrl = e.Peca.FotoPecaUrl,
+            Sku = e.Peca.Sku,
+            CodigoEan = e.Peca.CodigoEan,
+            Especificacoes = e.Peca.Especificacoes,
+            LojaId = e.Loja!.Id,
+            NomeLoja = e.Loja.NomeFantasia,
+            EnderecoCompleto = e.Loja.EnderecoCompleto,
+            TelefoneContato = e.Loja.TelefoneContato,
+            Latitude = e.Loja.Latitude,
+            Longitude = e.Loja.Longitude,
+            TotalAvaliacoes = e.Loja.Avaliacoes.Count(),
+            MediaAvaliacao = e.Loja.Avaliacoes.Any()
+                ? e.Loja.Avaliacoes.Average(a => (double)a.Nota)
+                : 5.0,
+            e.PrecoVenda,
+            e.EmPromocao,
+            e.PrecoPromocional,
+            PromocaoAtiva = e.EmPromocao &&
+                e.PrecoPromocional.HasValue &&
+                (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje),
+            PrecoEfetivo = (e.EmPromocao &&
+                e.PrecoPromocional.HasValue &&
+                (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje))
+                ? e.PrecoPromocional!.Value
+                : e.PrecoVenda,
+            e.QuantidadeEstoque,
+            DistanciaDouble = hasUserCoords
+                ? 2.0 * 6371.0 * Math.Asin(Math.Min(1.0, Math.Sqrt(
+                    Math.Pow(Math.Sin(((double)e.Loja.Latitude * degToRad - uLatRad) / 2.0), 2.0) +
+                    cosULat * Math.Cos((double)e.Loja.Latitude * degToRad) *
+                    Math.Pow(Math.Sin(((double)e.Loja.Longitude * degToRad - uLonRad) / 2.0), 2.0))))
+                : (double?)null
+        });
+
+        // Filtro exato de raio Haversine no banco
+        if (hasUserCoords && filtros.RaioKm.HasValue && filtros.RaioKm.Value > 0)
+        {
+            double raioMax = (double)filtros.RaioKm.Value;
+            projetada = projetada.Where(x => x.DistanciaDouble <= raioMax);
+        }
+
+        // Estatísticas agregadas no banco (evita carregar lista completa em memória)
+        var stats = await projetada
+            .GroupBy(_ => 1)
+            .Select(g => new
             {
-                continue;
-            }
+                Total = g.Count(),
+                MenorPreco = g.Min(x => x.PrecoEfetivo),
+                MaiorPreco = g.Max(x => x.PrecoEfetivo),
+                MaiorDistancia = g.Max(x => x.DistanciaDouble)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
 
-            // Filtro de marca/fabricante
-            if (!string.IsNullOrWhiteSpace(filtros.Marca))
+        var ordenacao = (filtros.Ordenacao ?? "recomendados").ToLower();
+
+        if (stats == null || stats.Total == 0)
+        {
+            var vazio = new PagedResult<OfertaBuscaItemResponse>(new List<OfertaBuscaItemResponse>(), 0, filtros.Page, filtros.PageSize);
+            return ApiResponse<BuscaResultadoResponse>.Ok(new BuscaResultadoResponse
             {
-                var marcas = filtros.Marca.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                if (marcas.Length > 0)
-                {
-                    var nome = peca.Nome ?? string.Empty;
-                    var desc = peca.Descricao ?? string.Empty;
-                    var specs = peca.Especificacoes ?? string.Empty;
-                    var sku = peca.Sku ?? string.Empty;
-
-                    bool matchMarca = marcas.Any(m =>
-                        nome.Contains(m, StringComparison.OrdinalIgnoreCase) ||
-                        desc.Contains(m, StringComparison.OrdinalIgnoreCase) ||
-                        specs.Contains(m, StringComparison.OrdinalIgnoreCase) ||
-                        sku.Contains(m, StringComparison.OrdinalIgnoreCase));
-
-                    if (!matchMarca)
-                    {
-                        continue;
-                    }
-                }
-            }
-
-            decimal? distancia = null;
-            if (filtros.UserLatitude.HasValue && filtros.UserLongitude.HasValue)
-            {
-                distancia = _geolocationService.CalcularDistanciaKm(
-                    filtros.UserLatitude.Value,
-                    filtros.UserLongitude.Value,
-                    loja.Latitude,
-                    loja.Longitude);
-
-                // Filtro por raio máximo de distância
-                if (filtros.RaioKm.HasValue && distancia.Value > filtros.RaioKm.Value)
-                {
-                    continue;
-                }
-            }
-
-            var totalAvaliacoes = loja.Avaliacoes.Count;
-            var mediaAvaliacao = totalAvaliacoes > 0 ? Math.Round(loja.Avaliacoes.Average(a => a.Nota), 1) : 5.0;
-
-            itens.Add(new OfertaBuscaItemResponse
-            {
-                EstoqueId = e.Id,
-                PecaId = peca.Id,
-                NomePeca = peca.Nome,
-                Categoria = peca.Categoria,
-                FotoPecaUrl = peca.FotoPecaUrl,
-                Sku = peca.Sku,
-                CodigoEan = peca.CodigoEan,
-                Especificacoes = peca.Especificacoes,
-                LojaId = loja.Id,
-                NomeLoja = loja.NomeFantasia,
-                EnderecoCompleto = loja.EnderecoCompleto,
-                TelefoneContato = loja.TelefoneContato,
-                Latitude = loja.Latitude,
-                Longitude = loja.Longitude,
-                MediaAvaliacaoLoja = mediaAvaliacao,
-                TotalAvaliacoesLoja = totalAvaliacoes,
-                PrecoVenda = e.PrecoVenda,
-                EmPromocao = e.EmPromocao,
-                PrecoPromocional = e.PrecoPromocional,
-                PrecoEfetivo = e.PrecoEfetivo,
-                PromocaoAtiva = e.PromocaoAtiva,
-                QuantidadeEstoque = e.QuantidadeEstoque,
-                DistanciaKm = distancia,
-                Compativel = true // Já filtrado se moto foi informada
+                Ofertas = vazio,
+                MotoFiltroModeloId = modeloMotoId,
+                MotoFiltroDescricao = motoDescricao,
+                FiltroCompatibilidadeAtivo = filtroCompatibilidadeAtivo,
+                RaioKmAplicado = filtros.RaioKm,
+                OrdenacaoAplicada = ordenacao
             });
         }
 
-        // Calcular ranking combinado se necessário
-        if (itens.Any())
-        {
-            var menorPreco = itens.Min(i => i.PrecoEfetivo);
-            var maiorPreco = itens.Max(i => i.PrecoEfetivo);
-            var distancias = itens.Where(i => i.DistanciaKm.HasValue).Select(i => i.DistanciaKm!.Value).ToList();
-            var maiorDistancia = distancias.Any() ? distancias.Max() : (decimal?)null;
+        decimal menorPreco = stats.MenorPreco;
+        decimal maiorPreco = stats.MaiorPreco;
+        decimal? maiorDistanciaDec = stats.MaiorDistancia.HasValue
+            ? Math.Round((decimal)stats.MaiorDistancia.Value, 2)
+            : null;
 
-            foreach (var item in itens)
-            {
-                item.ScoreRecomendacao = CalcularScoreRecomendacao(
-                    item.PrecoEfetivo,
-                    menorPreco,
-                    maiorPreco,
-                    item.DistanciaKm,
-                    maiorDistancia,
-                    item.MediaAvaliacaoLoja,
-                    item.PromocaoAtiva);
-            }
-        }
+        decimal precoDiff = maiorPreco > menorPreco ? (maiorPreco - menorPreco) : 0m;
+        double maxDistVal = stats.MaiorDistancia.HasValue && stats.MaiorDistancia.Value > 0.0
+            ? stats.MaiorDistancia.Value
+            : 0.0;
+        bool usarDistNoScore = hasUserCoords && maxDistVal > 0.0;
 
-        // Ordenação
-        var ordenacao = (filtros.Ordenacao ?? "recomendados").ToLower();
-        IEnumerable<OfertaBuscaItemResponse> itensOrdenados = ordenacao switch
+        var ordenada = ordenacao switch
         {
-            "menor_preco" => itens.OrderBy(i => i.PrecoEfetivo),
-            "maior_preco" => itens.OrderByDescending(i => i.PrecoEfetivo),
-            "menor_distancia" => itens.OrderBy(i => i.DistanciaKm ?? decimal.MaxValue),
-            "melhor_avaliacao" => itens.OrderByDescending(i => i.MediaAvaliacaoLoja).ThenBy(i => i.PrecoEfetivo),
-            _ => itens.OrderByDescending(i => i.ScoreRecomendacao) // "recomendados"
+            "menor_preco" => projetada.OrderBy(x => x.PrecoEfetivo).ThenBy(x => x.DistanciaDouble ?? double.MaxValue),
+            "maior_preco" => projetada.OrderByDescending(x => x.PrecoEfetivo).ThenBy(x => x.DistanciaDouble ?? double.MaxValue),
+            "menor_distancia" => projetada.OrderBy(x => x.DistanciaDouble ?? double.MaxValue).ThenBy(x => x.PrecoEfetivo),
+            "melhor_avaliacao" => projetada.OrderByDescending(x => x.MediaAvaliacao).ThenBy(x => x.PrecoEfetivo),
+            _ => projetada.OrderByDescending(x =>
+                0.35 * (precoDiff > 0m ? 1.0 - (double)(x.PrecoEfetivo - menorPreco) / (double)precoDiff : 1.0) +
+                0.30 * (usarDistNoScore && x.DistanciaDouble.HasValue ? 1.0 - x.DistanciaDouble.Value / maxDistVal : 0.5) +
+                0.20 * (x.MediaAvaliacao / 5.0) +
+                0.15 * (x.PromocaoAtiva ? 1.0 : 0.0))
         };
 
-        var listaOrdenada = itensOrdenados.ToList();
-        var totalCount = listaOrdenada.Count;
-
-        var paginados = listaOrdenada
+        var pagina = await ordenada
             .Skip((filtros.Page - 1) * filtros.PageSize)
             .Take(filtros.PageSize)
-            .ToList();
+            .ToListAsync(cancellationToken);
 
-        var pagedResult = new PagedResult<OfertaBuscaItemResponse>(paginados, totalCount, filtros.Page, filtros.PageSize);
+        var paginados = pagina.Select(x =>
+        {
+            var distanciaKm = x.DistanciaDouble.HasValue
+                ? Math.Round((decimal)x.DistanciaDouble.Value, 2)
+                : (decimal?)null;
+            var mediaArredondada = Math.Round(x.MediaAvaliacao, 1);
+
+            return new OfertaBuscaItemResponse
+            {
+                EstoqueId = x.EstoqueId,
+                PecaId = x.PecaId,
+                NomePeca = x.NomePeca,
+                Categoria = x.Categoria,
+                FotoPecaUrl = x.FotoPecaUrl,
+                Sku = x.Sku,
+                CodigoEan = x.CodigoEan,
+                Especificacoes = x.Especificacoes,
+                LojaId = x.LojaId,
+                NomeLoja = x.NomeLoja,
+                EnderecoCompleto = x.EnderecoCompleto,
+                TelefoneContato = x.TelefoneContato,
+                Latitude = x.Latitude,
+                Longitude = x.Longitude,
+                MediaAvaliacaoLoja = mediaArredondada,
+                TotalAvaliacoesLoja = x.TotalAvaliacoes,
+                PrecoVenda = x.PrecoVenda,
+                EmPromocao = x.EmPromocao,
+                PrecoPromocional = x.PrecoPromocional,
+                PrecoEfetivo = x.PrecoEfetivo,
+                PromocaoAtiva = x.PromocaoAtiva,
+                QuantidadeEstoque = x.QuantidadeEstoque,
+                DistanciaKm = distanciaKm,
+                Compativel = true,
+                ScoreRecomendacao = CalcularScoreRecomendacao(
+                    x.PrecoEfetivo,
+                    menorPreco,
+                    maiorPreco,
+                    distanciaKm,
+                    maiorDistanciaDec,
+                    mediaArredondada,
+                    x.PromocaoAtiva)
+            };
+        }).ToList();
+
+        var pagedResult = new PagedResult<OfertaBuscaItemResponse>(paginados, stats.Total, filtros.Page, filtros.PageSize);
 
         var resultado = new BuscaResultadoResponse
         {

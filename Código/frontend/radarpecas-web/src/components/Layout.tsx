@@ -7,14 +7,55 @@ import {
   useLocation,
   useNavigate,
 } from 'react-router-dom';
-import { UserCircle } from 'lucide-react';
+import { UserCircle, WifiOff } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { prefetchRoute } from '../lib/routePrefetch';
+import { MobileTabBar } from './MobileTabBar';
 import { ArrowLeftIcon, RadarLogo, SearchIcon } from './ui';
 
 export function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isOnline = useOnlineStatus();
+
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const updateSwRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let timerId: number | undefined;
+
+    const scheduleRegister = () => {
+      timerId = window.setTimeout(() => {
+        if (!active) return;
+        void import('virtual:pwa-register')
+          .then(({ registerSW }) => {
+            if (!active) return;
+            const update = registerSW({
+              onNeedRefresh() {
+                if (active) setNeedRefresh(true);
+              },
+            });
+            updateSwRef.current = update;
+          })
+          .catch(() => {});
+      }, 300);
+    };
+
+    if (document.readyState === 'complete') {
+      scheduleRegister();
+    } else {
+      window.addEventListener('load', scheduleRegister, { once: true });
+    }
+
+    return () => {
+      active = false;
+      window.removeEventListener('load', scheduleRegister);
+      if (timerId !== undefined) window.clearTimeout(timerId);
+    };
+  }, []);
 
   const [topSearch, setTopSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -27,14 +68,14 @@ export function Layout() {
   const isFullWidth = isHome || isLojistaPanel;
   const isAuthPage =
     location.pathname === '/login' || location.pathname === '/cadastro';
+  const isOfertaDetalhe = location.pathname.startsWith('/ofertas/');
   const isLojistaUser = user?.tipoUsuario === 'LOJISTA';
+  const showMobileTabBar = !isAuthPage && !isLojistaPanel && !isOfertaDetalhe;
 
-  // Fechar dropdown ao navegar para outra rota
   useEffect(() => {
     setShowUserDropdown(false);
   }, [location.pathname]);
 
-  // Fechar dropdown ao clicar fora ou pressionar Escape (mouse e touch)
   useEffect(() => {
     function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (
@@ -87,8 +128,11 @@ export function Layout() {
 
   return (
     <div className="shell">
+      <a className="skip-link" href="#conteudo">
+        Pular para o conteúdo
+      </a>
+
       <header className="topbar">
-        {/* Seta Voltar se não estiver na Home nem em Auth nem no Painel Lojista */}
         {!isHome && !isAuthPage && !isLojistaPanel && (
           <button
             type="button"
@@ -101,32 +145,40 @@ export function Layout() {
           </button>
         )}
 
-        {/* Marca & Logo Oficial */}
-        <Link className="brand-wrapper" to={isLojistaUser ? '/lojista' : '/'}>
+        <Link
+          className="brand-wrapper"
+          to={isLojistaUser ? '/lojista' : '/'}
+          onMouseEnter={() => prefetchRoute(isLojistaUser ? '/lojista' : '/')}
+        >
           <div className="brand-logo-icon">
             <RadarLogo size={32} />
           </div>
           <span className="brand-text">RadarPeças</span>
         </Link>
 
-        {/* Navegação Principal */}
         {!isAuthPage && (
           <nav className="nav" aria-label="Navegação Principal">
             <NavLink
               to="/"
               end
+              onMouseEnter={() => prefetchRoute('/')}
+              onFocus={() => prefetchRoute('/')}
               className={({ isActive }) => (isActive ? 'active' : '')}
             >
               Explorar
             </NavLink>
             <NavLink
               to="/lojas"
+              onMouseEnter={() => prefetchRoute('/lojas')}
+              onFocus={() => prefetchRoute('/lojas')}
               className={({ isActive }) => (isActive ? 'active' : '')}
             >
               Lojas
             </NavLink>
             <NavLink
               to="/busca?apenasPromocoes=true"
+              onMouseEnter={() => prefetchRoute('/busca')}
+              onFocus={() => prefetchRoute('/busca')}
               className={
                 location.search.includes('apenasPromocoes=true') ? 'active' : ''
               }
@@ -136,6 +188,8 @@ export function Layout() {
             {isLojistaUser && (
               <NavLink
                 to="/lojista"
+                onMouseEnter={() => prefetchRoute('/lojista')}
+                onFocus={() => prefetchRoute('/lojista')}
                 className={({ isActive }) => (isActive ? 'active' : '')}
               >
                 Dashboard
@@ -144,7 +198,6 @@ export function Layout() {
           </nav>
         )}
 
-        {/* Barra de Busca rápida no centro/direita da topbar */}
         {!isHome && !isAuthPage && (
           <form
             onSubmit={handleTopSearchSubmit}
@@ -168,14 +221,24 @@ export function Layout() {
           </form>
         )}
 
-        {/* Ações do Usuário (Painel Lojista / Garagem + Perfil) */}
         <div
           className="userbox"
           style={{ marginLeft: isHome || isAuthPage ? 'auto' : 0 }}
         >
           {!isAuthPage && !isLojistaUser && (
-            <Link className="btn-garage-top" to="/garagem">
+            <Link
+              className="btn-garage-top"
+              to="/garagem"
+              onMouseEnter={() => prefetchRoute('/garagem')}
+              onFocus={() => prefetchRoute('/garagem')}
+            >
               Garagem Virtual
+            </Link>
+          )}
+
+          {isLojistaPanel && (
+            <Link className="btn-garage-top" to="/">
+              Ver site
             </Link>
           )}
 
@@ -217,16 +280,26 @@ export function Layout() {
                   </div>
                   <div className="user-dropdown-body">
                     {isLojistaUser && (
-                      <NavLink
-                        to="/lojista"
-                        role="menuitem"
-                        className={({ isActive }) =>
-                          `user-dropdown-item${isActive ? ' active' : ''}`
-                        }
-                        onClick={() => setShowUserDropdown(false)}
-                      >
-                        Painel Lojista
-                      </NavLink>
+                      <>
+                        <NavLink
+                          to="/lojista"
+                          role="menuitem"
+                          className={({ isActive }) =>
+                            `user-dropdown-item${isActive ? ' active' : ''}`
+                          }
+                          onClick={() => setShowUserDropdown(false)}
+                        >
+                          Painel Lojista
+                        </NavLink>
+                        <NavLink
+                          to="/"
+                          role="menuitem"
+                          className="user-dropdown-item"
+                          onClick={() => setShowUserDropdown(false)}
+                        >
+                          Ver site público
+                        </NavLink>
+                      </>
                     )}
                     <NavLink
                       to="/garagem"
@@ -263,9 +336,9 @@ export function Layout() {
           ) : (
             !isAuthPage && (
               <Link
-                className="btn btn-outline"
+                className="btn btn-outline topbar-login-btn"
                 to="/login"
-                style={{ padding: '7px 14px', fontSize: '0.8rem' }}
+                onMouseEnter={() => prefetchRoute('/login')}
               >
                 Entrar
               </Link>
@@ -274,8 +347,41 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Conteúdo da Página: full width se for a tela de Explorar ou Painel Lojista, ou content-wrap com margem nas outras telas */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {!isOnline && (
+        <div className="offline-banner" role="status">
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <WifiOff size={16} aria-hidden="true" />
+            Você está offline — mostrando dados salvos.
+          </span>
+          <button
+            type="button"
+            className="offline-retry-btn"
+            onClick={() => window.location.reload()}
+          >
+            Tentar de novo
+          </button>
+        </div>
+      )}
+
+      {needRefresh && (
+        <div className="sw-update-banner" role="status">
+          <span>Nova versão disponível</span>
+          <button
+            type="button"
+            className="sw-update-btn"
+            onClick={() => void updateSwRef.current?.(true)}
+          >
+            Atualizar
+          </button>
+        </div>
+      )}
+
+      <main
+        id="conteudo"
+        tabIndex={-1}
+        className={showMobileTabBar ? 'has-mobile-tab-bar' : undefined}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', outline: 'none' }}
+      >
         {isFullWidth ? (
           <Outlet />
         ) : (
@@ -284,6 +390,8 @@ export function Layout() {
           </div>
         )}
       </main>
+
+      {showMobileTabBar && <MobileTabBar />}
     </div>
   );
 }

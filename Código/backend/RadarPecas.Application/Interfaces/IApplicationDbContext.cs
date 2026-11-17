@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using RadarPecas.Domain.Entities;
 
@@ -19,4 +20,15 @@ public interface IApplicationDbContext
 
     /// <summary>Executa SQL bruto (ex.: increments atômicos). Preferir para contadores.</summary>
     Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters);
+
+    /// <summary>
+    /// Filtra a consulta por substring case-insensitive em qualquer um dos campos informados,
+    /// usando <c>EF.Functions.ILike</c> no PostgreSQL para aproveitamento de índices trigram.
+    /// </summary>
+    IQueryable<T> FiltrarPorTexto<T>(IQueryable<T> query, string termo, params Expression<Func<T, string?>>[] campos);
+
+    /// <summary>
+    /// Filtra a consulta exigindo correspondência para ao menos um dos termos em qualquer um dos campos.
+    /// </summary>
+    IQueryable<T> FiltrarPorTermosQualquer<T>(IQueryable<T> query, IReadOnlyCollection<string> termos, params Expression<Func<T, string?>>[] campos);
 }

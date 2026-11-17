@@ -4,6 +4,7 @@ import { api, ApiError } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { GaragemItem, OfertaBuscaItem } from '../types';
 import { Button, EmptyState, ErrorState, Loading, TrashIcon, EditIcon } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
 
 export function GaragemPage() {
   const { activeMoto, setActiveMoto } = useActiveMoto();
@@ -15,6 +16,7 @@ export function GaragemPage() {
   const [motos, setMotos] = useState<GaragemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Peças recomendadas
   const [recommendedCategory, setRecommendedCategory] = useState('Todas');
@@ -28,14 +30,15 @@ export function GaragemPage() {
   const [editApelido, setEditApelido] = useState('');
   const [editFotoUrl, setEditFotoUrl] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const categories = ['Todas', 'Filtros', 'Pastilhas de Freio', 'Óleo', 'Relação'];
 
-  const carregarGaragem = useCallback(async () => {
+  const carregarGaragem = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError('');
     try {
-      const data = await api<GaragemItem[]>('/garagem');
+      const data = await api<GaragemItem[]>('/garagem', { signal });
       setMotos(data ?? []);
       const currentActive = activeMotoRef.current;
       if (data && data.length > 0) {
@@ -58,14 +61,17 @@ export function GaragemPage() {
         }
       }
     } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return;
       setError(err instanceof ApiError ? err.message : 'Erro ao carregar motos da garagem.');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [setActiveMoto]);
 
   useEffect(() => {
-    carregarGaragem();
+    const controller = new AbortController();
+    void carregarGaragem(controller.signal);
+    return () => controller.abort();
   }, [carregarGaragem]);
 
   // Carregar peças recomendadas para a moto ativa
@@ -76,27 +82,31 @@ export function GaragemPage() {
     }
 
     const currentMoto = activeMoto;
+    const controller = new AbortController();
 
     async function carregarRecomendadas() {
       setLoadingParts(true);
       try {
         const catQuery = recommendedCategory !== 'Todas' ? `&categoria=${encodeURIComponent(recommendedCategory)}` : '';
         const res = await api<{ ofertas: { items: OfertaBuscaItem[]; totalCount: number } }>(
-          `/busca?modeloMotoId=${currentMoto.modeloMotoId}&anoFabricacao=${currentMoto.anoFabricacao}${catQuery}&pageSize=4`
+          `/busca?modeloMotoId=${currentMoto.modeloMotoId}&anoFabricacao=${currentMoto.anoFabricacao}${catQuery}&pageSize=4`,
+          { signal: controller.signal }
         );
         if (res && res.ofertas) {
           setRecommendedParts(res.ofertas.items);
           setTotalCountParts(res.ofertas.totalCount);
         }
-      } catch {
+      } catch (err) {
+        if ((err as Error)?.name === 'AbortError') return;
         setRecommendedParts([]);
         setTotalCountParts(0);
       } finally {
-        setLoadingParts(false);
+        if (!controller.signal.aborted) setLoadingParts(false);
       }
     }
 
-    carregarRecomendadas();
+    void carregarRecomendadas();
+    return () => controller.abort();
   }, [activeMoto, recommendedCategory]);
 
   function handleSelectActive(moto: GaragemItem) {
@@ -113,6 +123,7 @@ export function GaragemPage() {
 
   async function handleDeleteMoto(id: string) {
     if (!window.confirm('Tem certeza que deseja remover esta moto da sua garagem?')) return;
+    setActionError('');
     try {
       await api(`/garagem/${id}`, { method: 'DELETE' });
       if (activeMotoRef.current?.id === id) {
@@ -121,11 +132,12 @@ export function GaragemPage() {
       }
       await carregarGaragem();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
+      setActionError(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
     }
   }
 
   function startEditing(moto: GaragemItem) {
+    setEditError('');
     setEditingMoto(moto);
     setEditAno(moto.anoFabricacao);
     setEditApelido(moto.apelido || '');
@@ -135,6 +147,7 @@ export function GaragemPage() {
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingMoto) return;
+    setEditError('');
     setSavingEdit(true);
     try {
       await api(`/garagem/${editingMoto.id}`, {
@@ -148,7 +161,7 @@ export function GaragemPage() {
       setEditingMoto(null);
       await carregarGaragem();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
+      setEditError(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
     } finally {
       setSavingEdit(false);
     }
@@ -175,6 +188,11 @@ export function GaragemPage() {
 
       {loading && <Loading text="Carregando sua garagem..." />}
       {error && <ErrorState text={error} onRetry={carregarGaragem} />}
+      {actionError && (
+        <div style={{ marginBottom: 16 }}>
+          <ErrorState text={actionError} />
+        </div>
+      )}
 
       {!loading && !error && motos.length === 0 && (
         <EmptyState text="Sua garagem está vazia! Cadastre sua primeira moto clicando no botão acima para desbloquear compatibilidade instantânea." />
@@ -200,23 +218,7 @@ export function GaragemPage() {
                 >
                   {/* Foto da Moto */}
                   <div className="moto-card-img-wrap">
-                    {moto.fotoMotoUrl ? (
-                      <img src={moto.fotoMotoUrl} alt={moto.modelo} />
-                    ) : (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '3rem',
-                          background: '#f1f5f9',
-                        }}
-                      >
-                        🏍️
-                      </div>
-                    )}
+                    <SmartImage src={moto.fotoMotoUrl} alt={moto.modelo} width={320} height={150} />
 
                     {/* Badge "Ativa" no topo direito */}
                     {isActive && (
@@ -361,24 +363,12 @@ export function GaragemPage() {
                         className="recommended-card"
                         style={{ textDecoration: 'none', color: 'inherit' }}
                       >
-                        {item.fotoPecaUrl ? (
-                          <img src={item.fotoPecaUrl} alt={item.nomePeca} />
-                        ) : (
-                          <div
-                            style={{
-                              width: 80,
-                              height: 80,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: '#f1f5f9',
-                              borderRadius: 'var(--radius-sm)',
-                              fontSize: '1.8rem',
-                            }}
-                          >
-                            📦
-                          </div>
-                        )}
+                        <SmartImage
+                          src={item.fotoPecaUrl}
+                          alt={item.nomePeca}
+                          width={80}
+                          height={80}
+                        />
 
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                           <div>
@@ -473,6 +463,7 @@ export function GaragemPage() {
                   placeholder="https://..."
                 />
               </div>
+              {editError && <ErrorState text={editError} />}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
                 <Button type="button" variant="ghost" onClick={() => setEditingMoto(null)}>
                   Cancelar

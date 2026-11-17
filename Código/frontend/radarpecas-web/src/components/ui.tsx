@@ -4,23 +4,35 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react
 // LOGO & ÍCONES SVG
 // ========================================================
 
-import radarLogoImg from '../assets/radarPecasLogo.png';
+import radarLogoWebp128 from '../assets/radarPecasLogo-128.webp';
+import radarLogoWebp256 from '../assets/radarPecasLogo-256.webp';
+import radarLogoPng128 from '../assets/radarPecasLogo-128.png';
 
 export function RadarLogo({ size = 36 }: { size?: number }) {
   return (
-    <img
-      src={radarLogoImg}
-      alt="RadarPeças Logo"
-      width={size}
-      height={size}
-      style={{
-        width: size,
-        height: size,
-        objectFit: 'contain',
-        borderRadius: '50%',
-        display: 'block',
-      }}
-    />
+    <picture style={{ display: 'block', width: size, height: size, flexShrink: 0 }}>
+      <source
+        srcSet={`${radarLogoWebp128} 128w, ${radarLogoWebp256} 256w`}
+        sizes={`${size}px`}
+        type="image/webp"
+      />
+      <img
+        src={radarLogoPng128}
+        alt="RadarPeças Logo"
+        width={size}
+        height={size}
+        loading="eager"
+        fetchPriority="high"
+        decoding="async"
+        style={{
+          width: size,
+          height: size,
+          objectFit: 'contain',
+          borderRadius: '50%',
+          display: 'block',
+        }}
+      />
+    </picture>
   );
 }
 

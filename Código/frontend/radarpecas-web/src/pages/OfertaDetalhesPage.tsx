@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Navigation } from 'lucide-react';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
-import { Button, Card, CheckIcon, ErrorState, Loading, StarIcon } from '../components/ui';
+import { Button, Card, CheckIcon, ErrorState, StarIcon } from '../components/ui';
+import { SmartImage } from '../components/SmartImage';
+import { Skeleton } from '../components/Skeleton';
+
+const MiniMapaLoja = lazy(() => import('../components/MiniMapaLoja'));
 
 export function OfertaDetalhesPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,25 +20,41 @@ export function OfertaDetalhesPage() {
   const [activeThumbIndex, setActiveThumbIndex] = useState(0);
   const [reservado, setReservado] = useState(false);
 
-  useEffect(() => {
+  const carregarOferta = useCallback((signal?: AbortSignal) => {
     if (!id) return;
     setLoading(true);
+    setError('');
 
-    api<OfertaDetalhe>(`/ofertas/${id}`)
+    api<OfertaDetalhe>(`/ofertas/${id}`, { signal })
       .then((data) => setOferta(data))
-      .catch(() => {
+      .catch((err) => {
+        if ((err as Error)?.name === 'AbortError') return;
         setError('Oferta não encontrada.');
         setOferta(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!signal?.aborted) setLoading(false);
+      });
   }, [id]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    carregarOferta(controller.signal);
+    return () => controller.abort();
+  }, [carregarOferta]);
 
   function formatMoney(valor: number): string {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
+  function registrarClique() {
+    if (!oferta) return;
+    void api(`/ofertas/${oferta.estoqueId}/clique`, { method: 'POST' }).catch(() => {});
+  }
+
   function handleReservar() {
     setReservado(true);
+    registrarClique();
     if (oferta?.loja.telefoneContato) {
       const cleanPhone = oferta.loja.telefoneContato.replace(/\D/g, '');
       const msg = encodeURIComponent(
@@ -45,12 +66,25 @@ export function OfertaDetalhesPage() {
 
   function handleIrAteALoja() {
     if (!oferta) return;
+    registrarClique();
     const endereco = encodeURIComponent(oferta.loja.enderecoCompleto);
     window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank', 'noopener,noreferrer');
   }
 
-  if (loading) return <Loading text="Carregando detalhes do produto..." />;
-  if (error || !oferta) return <ErrorState text={error || 'Oferta não encontrada.'} />;
+  if (loading) {
+    return (
+      <div className="details-layout" aria-busy="true" aria-label="Carregando detalhes do produto">
+        <Skeleton height={340} borderRadius="var(--radius-lg)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Skeleton height={220} borderRadius="var(--radius-lg)" />
+          <Skeleton height={260} borderRadius="var(--radius-lg)" />
+        </div>
+      </div>
+    );
+  }
+  if (error || !oferta) {
+    return <ErrorState text={error || 'Oferta não encontrada.'} onRetry={() => carregarOferta()} />;
+  }
 
   // Fotos disponíveis
   const galleryPhotos = [
@@ -73,7 +107,7 @@ export function OfertaDetalhesPage() {
   );
 
   return (
-    <section>
+    <section className="oferta-detalhe-page">
       {/* Layout em Duas Colunas */}
       <div className="details-layout">
         {/* COLUNA ESQUERDA: FOTO GRANDE + MINIATURAS + ESPECIFICAÇÕES */}
@@ -89,16 +123,13 @@ export function OfertaDetalhesPage() {
               </div>
             )}
 
-            {galleryPhotos.length > 0 ? (
-              <img
-                src={galleryPhotos[activeThumbIndex] || galleryPhotos[0]}
-                alt={oferta.peca.nome}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '4rem' }}>
-                ⚙️
-              </div>
-            )}
+            <SmartImage
+              src={galleryPhotos[activeThumbIndex] || galleryPhotos[0]}
+              alt={oferta.peca.nome}
+              width={540}
+              height={360}
+              priority
+            />
           </div>
 
           {/* Miniaturas da Galeria (apenas se houver mais de 1 imagem) */}
@@ -111,7 +142,7 @@ export function OfertaDetalhesPage() {
                   className={`gallery-thumb ${activeThumbIndex === idx ? 'active' : ''}`}
                   onClick={() => setActiveThumbIndex(idx)}
                 >
-                  <img src={url} alt={`Foto miniatura ${idx + 1}`} />
+                  <SmartImage src={url} alt={`Foto miniatura ${idx + 1}`} width={72} height={72} />
                 </button>
               ))}
             </div>
@@ -223,16 +254,18 @@ export function OfertaDetalhesPage() {
               </p>
             </div>
 
-            {/* Botão Reservar na Loja Física */}
-            <Button
-              type="button"
-              variant="outline"
-              block
-              onClick={handleReservar}
-              style={{ padding: '12px', fontSize: '0.88rem' }}
-            >
-              Reservar na Loja Física
-            </Button>
+            {/* Botão Reservar na Loja Física (Desktop; no mobile fica fixo na barra inferior) */}
+            <div className="desktop-only-reserve">
+              <Button
+                type="button"
+                variant="outline"
+                block
+                onClick={handleReservar}
+                style={{ padding: '12px', fontSize: '0.88rem' }}
+              >
+                Reservar na Loja Física
+              </Button>
+            </div>
 
             {reservado && (
               <p style={{ color: '#006375', fontSize: '0.82rem', textAlign: 'center', marginTop: 8 }}>
@@ -278,54 +311,34 @@ export function OfertaDetalhesPage() {
               </div>
             </div>
 
-            {/* Mini Mapa Preview estilizado */}
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: 120,
-                borderRadius: 'var(--radius)',
-                overflow: 'hidden',
-                background: '#e2e8f0',
-                marginBottom: 14,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* Imagem de fundo do mapa */}
-              <img
-                src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80"
-                alt="Mapa da Loja"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-              />
-
-              {/* Pin central */}
-              <div
-                style={{
-                  position: 'absolute',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontSize: '1.8rem', color: '#dc2626' }}>📍</span>
-                <span
+            {/* Mini Mapa Leaflet interativo da Loja */}
+            <Suspense
+              fallback={
+                <div
                   style={{
-                    background: '#ffffff',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    boxShadow: 'var(--shadow-sm)',
-                    border: '1px solid var(--border)',
+                    width: '100%',
+                    height: 170,
+                    borderRadius: 'var(--radius)',
+                    background: '#e2e8f0',
+                    marginBottom: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#475569',
+                    fontSize: '0.82rem',
                   }}
                 >
-                  {oferta.distanciaKm != null ? `A ${oferta.distanciaKm.toFixed(1)} km de você` : 'Localização da loja'}
-                </span>
-              </div>
-            </div>
+                  Carregando mapa da loja...
+                </div>
+              }
+            >
+              <MiniMapaLoja
+                latitude={oferta.loja.latitude}
+                longitude={oferta.loja.longitude}
+                nomeLoja={oferta.loja.nomeFantasia}
+                distanciaKm={oferta.distanciaKm}
+              />
+            </Suspense>
 
             {/* Endereço */}
             <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 16px', display: 'flex', gap: 6 }}>
@@ -357,6 +370,36 @@ export function OfertaDetalhesPage() {
             </button>
           </Card>
         </div>
+      </div>
+
+      {/* Barra fixa inferior de ação mobile */}
+      <div className="mobile-offer-action-bar" role="region" aria-label="Ações rápidas da oferta">
+        <div className="mobile-offer-price-col">
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>
+            Preço à vista
+          </span>
+          <strong style={{ fontSize: '1.25rem', fontWeight: 800, color: '#006375', lineHeight: 1.1 }}>
+            {formatMoney(oferta.precoEfetivo)}
+          </strong>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary mobile-offer-reserve-btn"
+          onClick={handleReservar}
+        >
+          Reservar
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-outline mobile-offer-route-btn"
+          onClick={handleIrAteALoja}
+          aria-label="Ir até a loja no mapa"
+          title="Ir até a loja"
+        >
+          <Navigation size={18} aria-hidden="true" />
+        </button>
       </div>
     </section>
   );

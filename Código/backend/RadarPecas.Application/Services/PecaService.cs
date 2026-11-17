@@ -26,12 +26,13 @@ public class PecaService : IPecaService
 
         if (!string.IsNullOrWhiteSpace(termo))
         {
-            var t = termo.Trim().ToLower();
-            query = query.Where(p =>
-                p.Nome.ToLower().Contains(t) ||
-                (p.Descricao != null && p.Descricao.ToLower().Contains(t)) ||
-                (p.Sku != null && p.Sku.ToLower().Contains(t)) ||
-                (p.CodigoEan != null && p.CodigoEan.Contains(t)));
+            query = _context.FiltrarPorTexto(
+                query,
+                termo,
+                p => p.Nome,
+                p => p.Descricao,
+                p => p.Sku,
+                p => p.CodigoEan);
         }
 
         if (!string.IsNullOrWhiteSpace(categoria))

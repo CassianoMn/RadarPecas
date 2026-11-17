@@ -1,3 +1,5 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using RadarPecas.Application.Interfaces;
 using RadarPecas.Domain.Entities;
@@ -7,6 +9,14 @@ namespace RadarPecas.Infrastructure.Data;
 
 public class RadarPecasDbContext : DbContext, IApplicationDbContext
 {
+    private static readonly MethodInfo ILikeMethod = typeof(NpgsqlDbFunctionsExtensions).GetMethod(
+        nameof(NpgsqlDbFunctionsExtensions.ILike),
+        [typeof(DbFunctions), typeof(string), typeof(string), typeof(string)])!;
+
+    private static readonly MethodInfo StringContainsMethod = typeof(string).GetMethod(
+        nameof(string.Contains),
+        [typeof(string), typeof(StringComparison)])!;
+
     public RadarPecasDbContext(DbContextOptions<RadarPecasDbContext> options) : base(options)
     {
     }
@@ -23,6 +33,101 @@ public class RadarPecasDbContext : DbContext, IApplicationDbContext
 
     public Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters) =>
         Database.ExecuteSqlRawAsync(sql, parameters);
+
+    public IQueryable<T> FiltrarPorTexto<T>(
+        IQueryable<T> query,
+        string termo,
+        params Expression<Func<T, string?>>[] campos)
+    {
+        if (string.IsNullOrWhiteSpace(termo) || campos.Length == 0)
+        {
+            return query;
+        }
+
+        return FiltrarPorTermosQualquer(query, [termo.Trim()], campos);
+    }
+
+    public IQueryable<T> FiltrarPorTermosQualquer<T>(
+        IQueryable<T> query,
+        IReadOnlyCollection<string> termos,
+        params Expression<Func<T, string?>>[] campos)
+    {
+        var termosLimpos = termos
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.Trim())
+            .ToArray();
+
+        if (termosLimpos.Length == 0 || campos.Length == 0)
+        {
+            return query;
+        }
+
+        var useNpgsql = Database.IsNpgsql();
+        var param = Expression.Parameter(typeof(T), "x");
+        var efFunctions = Expression.Property(null, typeof(EF), nameof(EF.Functions));
+        var escapeChar = Expression.Constant("\\");
+        Expression? combined = null;
+
+        foreach (var termo in termosLimpos)
+        {
+            var pattern = $"%{EscapeLike(termo)}%";
+            foreach (var campo in campos)
+            {
+                var body = new ParameterReplacer(campo.Parameters[0], param).Visit(campo.Body)!;
+                Expression matchExpr;
+
+                if (useNpgsql)
+                {
+                    matchExpr = Expression.AndAlso(
+                        Expression.NotEqual(body, Expression.Constant(null, typeof(string))),
+                        Expression.Call(
+                            ILikeMethod,
+                            efFunctions,
+                            body,
+                            Expression.Constant(pattern),
+                            escapeChar));
+                }
+                else
+                {
+                    matchExpr = Expression.AndAlso(
+                        Expression.NotEqual(body, Expression.Constant(null, typeof(string))),
+                        Expression.Call(
+                            body,
+                            StringContainsMethod,
+                            Expression.Constant(termo),
+                            Expression.Constant(StringComparison.OrdinalIgnoreCase)));
+                }
+
+                combined = combined == null ? matchExpr : Expression.OrElse(combined, matchExpr);
+            }
+        }
+
+        if (combined == null)
+        {
+            return query;
+        }
+
+        var predicate = Expression.Lambda<Func<T, bool>>(combined, param);
+        return query.Where(predicate);
+    }
+
+    private static string EscapeLike(string value) =>
+        value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
+    private sealed class ParameterReplacer : ExpressionVisitor
+    {
+        private readonly ParameterExpression _from;
+        private readonly ParameterExpression _to;
+
+        public ParameterReplacer(ParameterExpression from, ParameterExpression to)
+        {
+            _from = from;
+            _to = to;
+        }
+
+        protected override Expression VisitParameter(ParameterExpression node) =>
+            node == _from ? _to : base.VisitParameter(node);
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
