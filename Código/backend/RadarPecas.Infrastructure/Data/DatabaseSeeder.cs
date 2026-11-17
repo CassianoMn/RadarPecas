@@ -58,7 +58,7 @@ public static class DatabaseSeeder
                         Nome = "Vela de Ignição NGK CPR8EA-9",
                         Categoria = "Ignição",
                         Descricao = "Vela de ignição padrão resistiva NGK para motores monocilíndricos.",
-                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_876209-MLB108040626802_032026-O.webp",
+                        FotoPecaUrl = "/seed/vela-ignicao.webp",
                         Especificacoes = "{\"grau_termico\": \"8\", \"rosca\": \"10mm\", \"eletrodo\": \"Níquel\"}"
                     },
                     new()
@@ -68,7 +68,7 @@ public static class DatabaseSeeder
                         Nome = "Pastilha de Freio Dianteira Cobreq Street N-917",
                         Categoria = "Freios",
                         Descricao = "Pastilha orgânica para disco dianteiro, alta durabilidade e frenagem precisa.",
-                        FotoPecaUrl = "https://karhub-images.karhub.com.br/234957-pastilha-de-freio-dianteira-1726498351871.jpeg",
+                        FotoPecaUrl = "/seed/pastilha-freio.webp",
                         Especificacoes = "{\"posicao\": \"Dianteira\", \"material\": \"Orgânica\", \"linha\": \"Street\"}"
                     },
                     new()
@@ -78,7 +78,7 @@ public static class DatabaseSeeder
                         Nome = "Filtro de Óleo Fram CH6015",
                         Categoria = "Filtros",
                         Descricao = "Filtro de óleo de alta retenção de impurezas para proteção do motor.",
-                        FotoPecaUrl = "https://fortnine.ca/media/catalog/product/cache/dd4850ad4231b6306bceadf38a0bbeed/catalogimages/fram/extra-guard-oil-filter-cartridge-ch6015.jpg",
+                        FotoPecaUrl = "/seed/filtro-oleo.webp",
                         Especificacoes = "{\"tipo\": \"Refil interno\", \"meio_filtrante\": \"Celulose microfibra\"}"
                     },
                     new()
@@ -98,7 +98,7 @@ public static class DatabaseSeeder
                         Nome = "Pneu Traseiro Pirelli City Dragon 90/90-18 57P TT",
                         Categoria = "Pneus",
                         Descricao = "Pneu para uso urbano com excelente rendimento quilométrico e aderência no molhado.",
-                        FotoPecaUrl = "https://tyre-images.pirelli.com/MKTData/MOTO/files/2094/mototopimage/pirelli_moto_city_dragon_base_1_992x992.png",
+                        FotoPecaUrl = "/seed/pneu-traseiro.webp",
                         Especificacoes = "{\"medida\": \"90/90-18\", \"posicao\": \"Traseiro\", \"indice_carga\": \"57 (230 kg)\", \"indice_vel\": \"P (150 km/h)\"}"
                     },
                     new()
@@ -118,7 +118,7 @@ public static class DatabaseSeeder
                         Nome = "Óleo de Motor Mobil Super Moto 4T 10W-30 Semissintético 1L",
                         Categoria = "Lubrificantes",
                         Descricao = "Lubrificante semissintético de alta performance atendendo API SL e JASO MA2.",
-                        FotoPecaUrl = "https://cdn.awsli.com.br/600x450/877/877231/produto/221477213/mobil-4t-10w30-3egdm9prtu.png",
+                        FotoPecaUrl = "/seed/oleo-mobil-4t.webp",
                         Especificacoes = "{\"viscosidade\": \"10W-30\", \"base\": \"Semissintético\", \"normas\": \"API SL / JASO MA2\", \"volume\": \"1 Litro\"}"
                     },
                     new()
@@ -128,7 +128,7 @@ public static class DatabaseSeeder
                         Nome = "Lâmpada de Farol H4 LED Philips Ultinon Moto 6000K",
                         Categoria = "Iluminação",
                         Descricao = "Lâmpada LED automotiva de feixe concentrado sem ofuscamento e luz branca pura.",
-                        FotoPecaUrl = "https://fortbras.vteximg.com.br/arquivos/ids/318302/lampada-philips-ultinon-led-moto-luz-branca-hs1-h4-12v-9w-6000k-farol-11458umx1-hipervarejo-1.jpg",
+                        FotoPecaUrl = "/seed/lampada-led-h4.webp",
                         Especificacoes = "{\"encaixe\": \"H4\", \"temperatura_cor\": \"6000K\", \"potencia\": \"12W\", \"durabilidade\": \"1500h\"}"
                     },
                     new()
@@ -845,11 +845,72 @@ public static class DatabaseSeeder
                 }
             }
 
+            // 6. Saneamento idempotente de URLs de imagens quebradas em bancos legados
+            await CorrigirImagensLegadasAsync(context);
+
             logger.LogInformation("Seed de dados concluído com sucesso: 20 lojas de Sergipe ativas (Itabaiana prioritária, Aracaju, Lagarto, Campo do Brito, Ribeirópolis, Moita Bonita e Malhador)!");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Erro ao executar o seed do banco de dados.");
+        }
+    }
+
+    private static async Task CorrigirImagensLegadasAsync(RadarPecasDbContext context)
+    {
+        var pecasMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["VELA-NGK-CPR8EA9"] = "/seed/vela-ignicao.webp",
+            ["PAST-COBREQ-N917"] = "/seed/pastilha-freio.webp",
+            ["FILT-OLEO-FRAM-CH6015"] = "/seed/filtro-oleo.webp",
+            ["KIT-VAZ-CG160-RET"] = "/seed/kit-relacao.webp",
+            ["PNEU-PIRELLI-CITY-9090"] = "/seed/pneu-traseiro.webp",
+            ["BAT-HELIAR-HTZ6L"] = "/seed/bateria-moto.webp",
+            ["OLEO-MOBIL-10W30-4T"] = "/seed/oleo-mobil-4t.webp",
+            ["LAMP-LED-PHILIPS-H4"] = "/seed/lampada-led-h4.webp",
+            ["CABO-EMB-MOTOBOR-CG160"] = "/seed/cabo-embreagem.webp",
+            ["CORREIA-GATES-NMAX"] = "/seed/correia-cvt.webp"
+        };
+
+        var pecasLegadas = await context.Pecas
+            .Where(p => p.Sku != null && pecasMap.Keys.Contains(p.Sku))
+            .ToListAsync();
+
+        var alterado = false;
+        foreach (var p in pecasLegadas)
+        {
+            if (p.Sku != null && pecasMap.TryGetValue(p.Sku, out var novaUrl) &&
+                !string.Equals(p.FotoPecaUrl, novaUrl, StringComparison.OrdinalIgnoreCase) &&
+                (string.IsNullOrWhiteSpace(p.FotoPecaUrl) ||
+                 p.FotoPecaUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                 p.FotoPecaUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
+            {
+                p.FotoPecaUrl = novaUrl;
+                alterado = true;
+            }
+        }
+
+        var motosLegadas = await context.GaragemVirtual
+            .Where(g => g.FotoMotoUrl != null && g.FotoMotoUrl.Contains("upload.wikimedia.org"))
+            .ToListAsync();
+
+        foreach (var m in motosLegadas)
+        {
+            if (m.FotoMotoUrl!.Contains("Honda_CG_150_Titan", StringComparison.OrdinalIgnoreCase))
+            {
+                m.FotoMotoUrl = "/seed/honda-cg160-titan.webp";
+                alterado = true;
+            }
+            else if (m.FotoMotoUrl.Contains("YAMAHA_FZ-S", StringComparison.OrdinalIgnoreCase))
+            {
+                m.FotoMotoUrl = "/seed/yamaha-fazer-fz25.webp";
+                alterado = true;
+            }
+        }
+
+        if (alterado)
+        {
+            await context.SaveChangesAsync();
         }
     }
 }

@@ -103,9 +103,8 @@ export default function MapaExplorar({
       preferCanvas: true,
     }).setView(initialCenter, 14);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: ['a', 'b', 'c'],
       updateWhenIdle: true,
       keepBuffer: 2,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

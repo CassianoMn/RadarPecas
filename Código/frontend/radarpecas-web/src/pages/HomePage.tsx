@@ -7,6 +7,7 @@ import type { Loja } from '../types';
 import { EmptyState, FilterIcon, MicIcon, SearchIcon, StarIcon } from '../components/ui';
 import { Skeleton } from '../components/Skeleton';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
+import { buildLojasApiPath, consumeWarmLojas } from '../lib/buscaWarmup';
 
 const MapaExplorar = lazy(() => import('../components/MapaExplorar'));
 
@@ -31,17 +32,16 @@ export function HomePage() {
 
     setLoading(true);
     try {
-      const query = new URLSearchParams();
-      if (lat != null && lon != null) {
-        query.set('userLat', lat.toString());
-        query.set('userLon', lon.toString());
-        query.set('raioKm', '15');
+      const endpoint = buildLojasApiPath(lat, lon);
+      const warm = consumeWarmLojas(endpoint);
+      const lojasData = warm
+        ? await warm
+        : await api<Loja[]>(endpoint, {
+            signal: controller.signal,
+          });
+      if (!controller.signal.aborted) {
+        setLojas(lojasData ?? []);
       }
-      const queryString = query.toString();
-      const lojasData = await api<Loja[]>(queryString ? `/lojas?${queryString}` : '/lojas', {
-        signal: controller.signal,
-      });
-      setLojas(lojasData ?? []);
     } catch (err) {
       if ((err as Error)?.name === 'AbortError') return;
       setLojas([]);
@@ -56,6 +56,8 @@ export function HomePage() {
     const storedCoords = getStoredUserCoords();
     if (storedCoords) {
       void carregarLojasPorCoordenadas(storedCoords.lat, storedCoords.lng);
+    } else {
+      void carregarLojasPorCoordenadas();
     }
 
     if (navigator.geolocation) {
@@ -64,15 +66,9 @@ export function HomePage() {
           setStoredUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
           void carregarLojasPorCoordenadas(pos.coords.latitude, pos.coords.longitude);
         },
-        () => {
-          if (!storedCoords) {
-            void carregarLojasPorCoordenadas();
-          }
-        },
+        () => {},
         { timeout: 5000 }
       );
-    } else if (!storedCoords) {
-      void carregarLojasPorCoordenadas();
     }
 
     return () => lojasAbortRef.current?.abort();

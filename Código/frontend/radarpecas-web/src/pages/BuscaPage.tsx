@@ -11,35 +11,19 @@ import { FilterSheet } from '../components/FilterSheet';
 import { SmartImage } from '../components/SmartImage';
 import { ProductCardSkeleton } from '../components/Skeleton';
 import { getStoredUserCoords, setStoredUserCoords } from '../lib/location';
+import {
+  BUSCA_PAGE_SIZE,
+  buildBuscaApiPath,
+  consumeWarmBusca,
+  parseDistancia,
+  parseMarcas,
+  parsePage,
+  parsePreco,
+} from '../lib/buscaWarmup';
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = BUSCA_PAGE_SIZE;
 const MARCAS_DISPONIVEIS = ['Vaz', 'Cobreq', 'Fram', 'Pirelli', 'Heliar', 'Mobil', 'Philips', 'DID', 'KMC'];
 const CATEGORIAS_FALLBACK = ['Transmissão', 'Filtros', 'Pneus', 'Óleos', 'Freios', 'Motor', 'Elétrica'];
-
-function parseDistancia(raw: string | null): DistanciaPill {
-  if (raw === '5km' || raw === '15km' || raw === '+15km') return raw;
-  return '15km';
-}
-
-function parseMarcas(raw: string | null): string[] {
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((m) => m.trim())
-    .filter(Boolean);
-}
-
-function parsePreco(raw: string | null): number {
-  const num = Number(raw);
-  if (!raw || Number.isNaN(num) || num < 50 || num > 1500) return 1500;
-  return num;
-}
-
-function parsePage(raw: string | null): number {
-  const num = Number(raw);
-  if (!raw || Number.isNaN(num) || num < 1) return 1;
-  return Math.floor(num);
-}
 
 function formatMoney(valor: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -181,36 +165,29 @@ export function BuscaPage() {
       else setLoading(true);
       setError('');
 
-      const params = new URLSearchParams();
-      if (termo.trim()) params.set('termo', termo.trim());
-      if (categoria) params.set('categoria', categoria);
-      if (activeMoto) {
-        params.set('modeloMotoId', activeMoto.modeloMotoId.toString());
-        params.set('anoFabricacao', activeMoto.anoFabricacao.toString());
-      }
-      if (apenasPromocoes) {
-        params.set('apenasPromocoes', 'true');
-      }
-      if (userCoords) {
-        params.set('userLatitude', userCoords.lat.toString());
-        params.set('userLongitude', userCoords.lng.toString());
-      }
-      const raio = distanciaPill === '5km' ? '5' : distanciaPill === '15km' ? '15' : '50';
-      params.set('raioKm', raio);
-      if (selectedMarcas.length > 0) {
-        params.set('marca', selectedMarcas.join(','));
-      }
-      if (precoMaximo < 1500) {
-        params.set('precoMaximo', precoMaximo.toString());
-      }
-      params.set('ordenacao', ordenacao);
-      params.set('page', String(targetPage));
-      params.set('pageSize', String(overridePageSize ?? PAGE_SIZE));
+      const endpoint = buildBuscaApiPath({
+        termo,
+        categoria,
+        modeloMotoId: activeMoto?.modeloMotoId,
+        anoFabricacao: activeMoto?.anoFabricacao,
+        apenasPromocoes,
+        userCoords,
+        distanciaPill,
+        selectedMarcas,
+        precoMaximo,
+        ordenacao,
+        page: targetPage,
+        pageSize: overridePageSize ?? PAGE_SIZE,
+      });
 
       try {
-        const data = await api<BuscaResultado>(`/busca?${params.toString()}`, {
-          signal: controller.signal,
-        });
+        const warm = !append ? consumeWarmBusca(endpoint) : null;
+        const data = warm
+          ? await warm
+          : await api<BuscaResultado>(endpoint, {
+              signal: controller.signal,
+            });
+        if (controller.signal.aborted) return;
         const novos = data?.ofertas?.items ?? [];
         const total = data?.ofertas?.totalCount ?? 0;
 
@@ -614,7 +591,7 @@ export function BuscaPage() {
                 </div>
               ) : (
                 <div className="search-results-grid" style={{ opacity: loadingMore ? 0.85 : 1 }}>
-                  {items.map((item) => {
+                  {items.map((item, index) => {
                     const showCompativel = Boolean(activeMoto && item.compativel);
 
                     return (
@@ -634,6 +611,7 @@ export function BuscaPage() {
                             alt={item.nomePeca}
                             width={300}
                             height={200}
+                            priority={index < 2}
                           />
                         </div>
 

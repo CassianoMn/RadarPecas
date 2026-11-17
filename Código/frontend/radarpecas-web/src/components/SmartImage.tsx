@@ -16,7 +16,28 @@ interface SmartImageProps {
 const DEFAULT_FALLBACK = '/placeholder-peca.svg';
 const DEFAULT_SIZES = '(max-width: 640px) 92vw, (max-width: 1024px) 45vw, 300px';
 
-function buildUnsplashSrcSet(url: string): string | undefined {
+const SEED_RESPONSIVE_NAMES = new Set([
+  'bateria-moto',
+  'cabo-embreagem',
+  'correia-cvt',
+  'filtro-oleo',
+  'honda-cg160-titan',
+  'kit-relacao',
+  'lampada-led-h4',
+  'oleo-mobil-4t',
+  'pastilha-freio',
+  'pneu-traseiro',
+  'vela-ignicao',
+  'yamaha-fazer-fz25',
+]);
+
+function buildResponsiveSrcSet(url: string): string | undefined {
+  const seedMatch = /^\/seed\/([a-z0-9-]+)\.webp$/i.exec(url.trim());
+  if (seedMatch && SEED_RESPONSIVE_NAMES.has(seedMatch[1])) {
+    const base = seedMatch[1];
+    return `/seed/${base}-320.webp 320w, /seed/${base}.webp 640w`;
+  }
+
   try {
     const parsed = new URL(url);
     if (!parsed.hostname.includes('images.unsplash.com')) {
@@ -56,7 +77,7 @@ export function SmartImage({
 
   const effectiveSrc = !src || failed ? fallback : src;
   const isUsingFallback = !src || failed;
-  const srcSet = !isUsingFallback ? buildUnsplashSrcSet(effectiveSrc) : undefined;
+  const srcSet = !isUsingFallback ? buildResponsiveSrcSet(effectiveSrc) : undefined;
 
   return (
     <img

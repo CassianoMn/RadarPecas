@@ -2835,8 +2835,8 @@ iframe,
   animation: shimmer 1.4s ease infinite;
 }
 
-.product-card,
-.store-catalog-card,
+.product-card:nth-child(n + 5),
+.store-catalog-card:nth-child(n + 5),
 .moto-card-item {
   content-visibility: auto;
   contain-intrinsic-size: auto 320px;

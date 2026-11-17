@@ -1,3 +1,5 @@
+import { warmInitialBusca, warmInitialLojas } from './buscaWarmup';
+
 const prefetched = new Set<string>();
 
 type Importer = () => Promise<unknown>;
@@ -28,15 +30,45 @@ function shouldSkipPrefetch(): boolean {
   return conn.effectiveType === '2g' || conn.effectiveType === 'slow-2g';
 }
 
-export function prefetchRoute(path: string): void {
-  const basePath = path.split('?')[0];
-  if (prefetched.has(basePath) || shouldSkipPrefetch()) return;
+function resolveImporter(basePath: string): Importer | undefined {
+  if (ROUTE_IMPORTS[basePath]) return ROUTE_IMPORTS[basePath];
+  if (/^\/lojas\/[^/]+\/avaliar$/.test(basePath)) {
+    return () => import('../pages/AvaliarLojaPage');
+  }
+  if (/^\/lojas\/[^/]+$/.test(basePath)) {
+    return () => import('../pages/LojaDetalhesPage');
+  }
+  if (/^\/ofertas\/[^/]+$/.test(basePath)) {
+    return () => import('../pages/OfertaDetalhesPage');
+  }
+  return undefined;
+}
 
-  const loader = ROUTE_IMPORTS[basePath];
+function triggerImport(basePath: string): void {
+  if (prefetched.has(basePath)) return;
+
+  const loader = resolveImporter(basePath);
   if (!loader) return;
 
   prefetched.add(basePath);
   void loader().catch(() => {
     prefetched.delete(basePath);
   });
+}
+
+export function warmInitialRoute(path: string, search = ''): void {
+  const basePath = path.split('?')[0] || '/';
+  triggerImport(basePath);
+  if (basePath === '/') {
+    void import('../components/MapaExplorar').catch(() => {});
+    warmInitialLojas();
+  } else if (basePath === '/busca') {
+    warmInitialBusca(search);
+  }
+}
+
+export function prefetchRoute(path: string): void {
+  const basePath = path.split('?')[0];
+  if (shouldSkipPrefetch()) return;
+  triggerImport(basePath);
 }

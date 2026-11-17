@@ -8,7 +8,6 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { UserCircle, WifiOff } from 'lucide-react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
 import { useAuth } from '../auth/useAuth';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { prefetchRoute } from '../lib/routePrefetch';
@@ -21,10 +20,42 @@ export function Layout() {
   const location = useLocation();
   const isOnline = useOnlineStatus();
 
-  const {
-    needRefresh: [needRefresh],
-    updateServiceWorker,
-  } = useRegisterSW();
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const updateSwRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let timerId: number | undefined;
+
+    const scheduleRegister = () => {
+      timerId = window.setTimeout(() => {
+        if (!active) return;
+        void import('virtual:pwa-register')
+          .then(({ registerSW }) => {
+            if (!active) return;
+            const update = registerSW({
+              onNeedRefresh() {
+                if (active) setNeedRefresh(true);
+              },
+            });
+            updateSwRef.current = update;
+          })
+          .catch(() => {});
+      }, 1500);
+    };
+
+    if (document.readyState === 'complete') {
+      scheduleRegister();
+    } else {
+      window.addEventListener('load', scheduleRegister, { once: true });
+    }
+
+    return () => {
+      active = false;
+      window.removeEventListener('load', scheduleRegister);
+      if (timerId !== undefined) window.clearTimeout(timerId);
+    };
+  }, []);
 
   const [topSearch, setTopSearch] = useState('');
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -338,7 +369,7 @@ export function Layout() {
           <button
             type="button"
             className="sw-update-btn"
-            onClick={() => void updateServiceWorker(true)}
+            onClick={() => void updateSwRef.current?.(true)}
           >
             Atualizar
           </button>
