@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
 import { Button, Card, CheckIcon, ErrorState, Loading, StarIcon } from '../components/ui';
+
+const MiniMapaLoja = lazy(() => import('../components/MiniMapaLoja'));
 
 export function OfertaDetalhesPage() {
   const { id } = useParams<{ id: string }>();
@@ -278,54 +280,34 @@ export function OfertaDetalhesPage() {
               </div>
             </div>
 
-            {/* Mini Mapa Preview estilizado */}
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                height: 120,
-                borderRadius: 'var(--radius)',
-                overflow: 'hidden',
-                background: '#e2e8f0',
-                marginBottom: 14,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* Imagem de fundo do mapa */}
-              <img
-                src="https://images.unsplash.com/photo-1524661135-423995f22d0b?w=600&auto=format&fit=crop&q=80"
-                alt="Mapa da Loja"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
-              />
-
-              {/* Pin central */}
-              <div
-                style={{
-                  position: 'absolute',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontSize: '1.8rem', color: '#dc2626' }}>📍</span>
-                <span
+            {/* Mini Mapa Leaflet interativo da Loja */}
+            <Suspense
+              fallback={
+                <div
                   style={{
-                    background: '#ffffff',
-                    padding: '2px 8px',
-                    borderRadius: 'var(--radius-pill)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    boxShadow: 'var(--shadow-sm)',
-                    border: '1px solid var(--border)',
+                    width: '100%',
+                    height: 170,
+                    borderRadius: 'var(--radius)',
+                    background: '#e2e8f0',
+                    marginBottom: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#475569',
+                    fontSize: '0.82rem',
                   }}
                 >
-                  {oferta.distanciaKm != null ? `A ${oferta.distanciaKm.toFixed(1)} km de você` : 'Localização da loja'}
-                </span>
-              </div>
-            </div>
+                  Carregando mapa da loja...
+                </div>
+              }
+            >
+              <MiniMapaLoja
+                latitude={oferta.loja.latitude}
+                longitude={oferta.loja.longitude}
+                nomeLoja={oferta.loja.nomeFantasia}
+                distanciaKm={oferta.distanciaKm}
+              />
+            </Suspense>
 
             {/* Endereço */}
             <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0 0 16px', display: 'flex', gap: 6 }}>

@@ -88,7 +88,7 @@ public static class DatabaseSeeder
                         Nome = "Kit Relação Transmissão Vaz com Retentor Aço 1045",
                         Categoria = "Transmissão",
                         Descricao = "Kit completo de transmissão (coroa, pinhão e corrente com o-ring retentor).",
-                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_881930-MLU75562498498_042024-F.webp",
+                        FotoPecaUrl = "/seed/kit-relacao.webp",
                         Especificacoes = "{\"coroa\": \"44D\", \"pinhao\": \"15D\", \"corrente\": \"428HO-118L com retentor\", \"aco\": \"1045\"}"
                     },
                     new()
@@ -108,7 +108,7 @@ public static class DatabaseSeeder
                         Nome = "Bateria Selada Heliar 12V 5Ah HTZ6L AGM",
                         Categoria = "Elétrica",
                         Descricao = "Bateria livre de manutenção com tecnologia AGM e alta corrente de partida.",
-                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_871209-MLU72521367498_102023-F.webp",
+                        FotoPecaUrl = "/seed/bateria-moto.webp",
                         Especificacoes = "{\"tensao\": \"12V\", \"capacidade\": \"5Ah\", \"cca\": \"50A\", \"tecnologia\": \"AGM / VRLA\"}"
                     },
                     new()
@@ -138,7 +138,7 @@ public static class DatabaseSeeder
                         Nome = "Cabo de Embreagem Reforçado Motobor CG 160",
                         Categoria = "Cabos & Comandos",
                         Descricao = "Cabo de embreagem com teflon interno de acionamento ultra macio e resistente.",
-                        FotoPecaUrl = "https://www.motokart.com.br/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/c/a/cabo_embreagem_titan_fan_start_160_1_2.jpg",
+                        FotoPecaUrl = "/seed/cabo-embreagem.webp",
                         Especificacoes = "{\"revestimento\": \"Teflon\", \"comprimento\": \"105cm\", \"garantia\": \"6 meses\"}"
                     },
                     new()
@@ -148,7 +148,7 @@ public static class DatabaseSeeder
                         Nome = "Correia de Transmissão CVT Gates Powerlink NMAX 160",
                         Categoria = "Transmissão",
                         Descricao = "Correia dentada de alta durabilidade e dissipação térmica para scooter.",
-                        FotoPecaUrl = "https://http2.mlstatic.com/D_NQ_NP_2X_938589-MLU74021834718_012024-F.webp",
+                        FotoPecaUrl = "/seed/correia-cvt.webp",
                         Especificacoes = "{\"material\": \"EPDM com cordonéis de aramida\", \"perfil\": \"CVT\", \"scooter\": \"NMAX 160\"}"
                     }
                 };
@@ -274,7 +274,7 @@ public static class DatabaseSeeder
                         ModeloMotoId = modeloCg.Id,
                         AnoFabricacao = 2022,
                         Apelido = "Titan 160 do Dia a Dia",
-                        FotoMotoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Honda_CG_150_Titan.jpg/800px-Honda_CG_150_Titan.jpg"
+                        FotoMotoUrl = "/seed/honda-cg160-titan.webp"
                     });
                 }
 
@@ -287,7 +287,7 @@ public static class DatabaseSeeder
                         ModeloMotoId = modeloFz.Id,
                         AnoFabricacao = 2023,
                         Apelido = "Fazer 250 de Viagem",
-                        FotoMotoUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/YAMAHA_FZ-S.jpg/800px-YAMAHA_FZ-S.jpg"
+                        FotoMotoUrl = "/seed/yamaha-fazer-fz25.webp"
                     });
                 }
                 await context.SaveChangesAsync();

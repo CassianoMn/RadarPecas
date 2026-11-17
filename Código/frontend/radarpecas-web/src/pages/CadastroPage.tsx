@@ -1,10 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiError } from '../lib/api';
+import { api, ApiError } from '../lib/api';
 import { useAuth } from '../auth/useAuth';
-import { Bike, Store, FileText, Mail, MapPin, Lock, User } from 'lucide-react';
+import type { LocalizacaoSugestao } from '../types';
+import { Bike, Store, FileText, Mail, MapPin, Lock, User, Check } from 'lucide-react';
 import { Button, ErrorState, EyeIcon, EyeOffIcon, Field, TextInput } from '../components/ui';
+
+function isCnpjValido(cnpj: string): boolean {
+  const digits = cnpj.replace(/\D/g, '');
+  if (digits.length !== 14 || /^(\d)\1+$/.test(digits)) return false;
+
+  const calcDv = (slice: string, weights: number[]) => {
+    const sum = slice.split('').reduce((acc, ch, idx) => acc + Number(ch) * weights[idx], 0);
+    const mod = sum % 11;
+    return mod < 2 ? 0 : 11 - mod;
+  };
+
+  const dv1 = calcDv(digits.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const dv2 = calcDv(digits.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return Number(digits[12]) === dv1 && Number(digits[13]) === dv2;
+}
 
 export function CadastroPage() {
   const { registerMotociclista, registerLojista } = useAuth();
@@ -15,12 +31,55 @@ export function CadastroPage() {
   const [nomeLoja, setNomeLoja] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [enderecoLoja, setEnderecoLoja] = useState('');
+  const [coordsSelecionadas, setCoordsSelecionadas] = useState<{ lat: number; lon: number } | null>(null);
+  const [sugestoesEndereco, setSugestoesEndereco] = useState<LocalizacaoSugestao[]>([]);
+  const [buscandoEndereco, setBuscandoEndereco] = useState(false);
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+
+  const geocodeAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (tipoConta !== 'loja' || coordsSelecionadas) {
+      setSugestoesEndereco([]);
+      return;
+    }
+
+    const q = enderecoLoja.trim();
+    if (q.length < 4) {
+      setSugestoesEndereco([]);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      geocodeAbortRef.current?.abort();
+      const controller = new AbortController();
+      geocodeAbortRef.current = controller;
+      setBuscandoEndereco(true);
+      try {
+        const res = await api<LocalizacaoSugestao[]>(
+          `/geocoding/sugestoes?q=${encodeURIComponent(q)}&limite=5`,
+          { signal: controller.signal }
+        );
+        setSugestoesEndereco(res ?? []);
+      } catch {
+        setSugestoesEndereco([]);
+      } finally {
+        if (geocodeAbortRef.current === controller) {
+          setBuscandoEndereco(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      geocodeAbortRef.current?.abort();
+    };
+  }, [enderecoLoja, tipoConta, coordsSelecionadas]);
 
   function formatCnpj(val: string) {
     const digits = val.replace(/\D/g, '').slice(0, 14);
@@ -53,8 +112,13 @@ export function CadastroPage() {
           setSending(false);
           return;
         }
-        if (!enderecoLoja.trim()) {
-          setError('Informe o endereço principal da loja.');
+        if (cnpj.trim() && !isCnpjValido(cnpj)) {
+          setError('O CNPJ informado é inválido. Verifique os 14 dígitos ou deixe em branco.');
+          setSending(false);
+          return;
+        }
+        if (!enderecoLoja.trim() || enderecoLoja.trim().length < 5) {
+          setError('Informe o endereço principal da loja (rua, cidade e UF).');
           setSending(false);
           return;
         }
@@ -65,6 +129,8 @@ export function CadastroPage() {
           email: email.trim(),
           senha,
           enderecoCompleto: enderecoLoja.trim(),
+          latitude: coordsSelecionadas?.lat,
+          longitude: coordsSelecionadas?.lon,
         });
         navigate('/lojista', { replace: true });
       } else {
@@ -197,18 +263,17 @@ export function CadastroPage() {
                     required
                     value={nomeLoja}
                     onChange={(e) => setNomeLoja(e.target.value)}
-                    placeholder="Ex: MotoPeças Silva"
+                    placeholder="Ex: MotoPeças Itabaiana"
                     style={{ paddingLeft: 38 }}
                   />
                 </div>
               </Field>
 
-              <Field label="CNPJ">
+              <Field label="CNPJ (Opcional)">
                 <div style={{ position: 'relative' }}>
                   <FileText size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                   <TextInput
                     type="text"
-                    required
                     value={cnpj}
                     onChange={(e) => setCnpj(formatCnpj(e.target.value))}
                     placeholder="00.000.000/0001-00"
@@ -234,15 +299,70 @@ export function CadastroPage() {
 
               <Field label="Endereço Principal">
                 <div style={{ position: 'relative' }}>
-                  <MapPin size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
+                  <MapPin size={16} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--text-muted)', pointerEvents: 'none' }} />
                   <TextInput
                     type="text"
                     required
                     value={enderecoLoja}
-                    onChange={(e) => setEnderecoLoja(e.target.value)}
-                    placeholder="Ex: Av. Tiradentes, 500 - Centro, São Paulo - SP"
+                    onChange={(e) => {
+                      setEnderecoLoja(e.target.value);
+                      setCoordsSelecionadas(null);
+                    }}
+                    placeholder="Ex: Av. Ivo de Carvalho, 500 - Centro, Itabaiana - SE"
                     style={{ paddingLeft: 38 }}
                   />
+                  {buscandoEndereco && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: 4 }}>
+                      Buscando endereço no mapa...
+                    </span>
+                  )}
+                  {coordsSelecionadas && (
+                    <span style={{ fontSize: '0.76rem', color: '#047857', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontWeight: 600 }}>
+                      <Check size={14} /> Localização confirmada no mapa
+                    </span>
+                  )}
+                  {sugestoesEndereco.length > 0 && (
+                    <ul
+                      role="listbox"
+                      style={{
+                        listStyle: 'none',
+                        margin: '6px 0 0',
+                        padding: 0,
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 'var(--radius-sm)',
+                        background: '#ffffff',
+                        maxHeight: 190,
+                        overflowY: 'auto',
+                        boxShadow: 'var(--shadow-sm)',
+                      }}
+                    >
+                      {sugestoesEndereco.map((s, idx) => (
+                        <li key={`${s.latitude}-${s.longitude}-${idx}`}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEnderecoLoja(s.nomeFormatadoPadrao || s.displayName);
+                              setCoordsSelecionadas({ lat: s.latitude, lon: s.longitude });
+                              setSugestoesEndereco([]);
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              border: 'none',
+                              borderBottom: '1px solid var(--border)',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              fontSize: '0.82rem',
+                            }}
+                          >
+                            <strong style={{ display: 'block', color: 'var(--text)' }}>{s.titulo}</strong>
+                            <span style={{ color: 'var(--text-muted)' }}>{s.subtitulo || s.displayName}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </Field>
 

@@ -24,12 +24,22 @@ const BASE_URL =
 const TOKEN_KEY = 'radarpecas:token';
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY);
 }
 
-export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+export function setToken(token: string | null, remember = true): void {
+  if (!token) {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    return;
+  }
+  if (remember) {
+    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.removeItem(TOKEN_KEY);
+  } else {
+    sessionStorage.setItem(TOKEN_KEY, token);
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 function toMessage(status: number, fallback: string): string {

@@ -15,6 +15,7 @@ export function GaragemPage() {
   const [motos, setMotos] = useState<GaragemItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Peças recomendadas
   const [recommendedCategory, setRecommendedCategory] = useState('Todas');
@@ -28,6 +29,7 @@ export function GaragemPage() {
   const [editApelido, setEditApelido] = useState('');
   const [editFotoUrl, setEditFotoUrl] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
 
   const categories = ['Todas', 'Filtros', 'Pastilhas de Freio', 'Óleo', 'Relação'];
 
@@ -113,6 +115,7 @@ export function GaragemPage() {
 
   async function handleDeleteMoto(id: string) {
     if (!window.confirm('Tem certeza que deseja remover esta moto da sua garagem?')) return;
+    setActionError('');
     try {
       await api(`/garagem/${id}`, { method: 'DELETE' });
       if (activeMotoRef.current?.id === id) {
@@ -121,11 +124,12 @@ export function GaragemPage() {
       }
       await carregarGaragem();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
+      setActionError(err instanceof ApiError ? err.message : 'Erro ao remover moto.');
     }
   }
 
   function startEditing(moto: GaragemItem) {
+    setEditError('');
     setEditingMoto(moto);
     setEditAno(moto.anoFabricacao);
     setEditApelido(moto.apelido || '');
@@ -135,6 +139,7 @@ export function GaragemPage() {
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingMoto) return;
+    setEditError('');
     setSavingEdit(true);
     try {
       await api(`/garagem/${editingMoto.id}`, {
@@ -148,7 +153,7 @@ export function GaragemPage() {
       setEditingMoto(null);
       await carregarGaragem();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
+      setEditError(err instanceof ApiError ? err.message : 'Erro ao atualizar moto.');
     } finally {
       setSavingEdit(false);
     }
@@ -175,6 +180,11 @@ export function GaragemPage() {
 
       {loading && <Loading text="Carregando sua garagem..." />}
       {error && <ErrorState text={error} onRetry={carregarGaragem} />}
+      {actionError && (
+        <div style={{ marginBottom: 16 }}>
+          <ErrorState text={actionError} />
+        </div>
+      )}
 
       {!loading && !error && motos.length === 0 && (
         <EmptyState text="Sua garagem está vazia! Cadastre sua primeira moto clicando no botão acima para desbloquear compatibilidade instantânea." />
@@ -473,6 +483,7 @@ export function GaragemPage() {
                   placeholder="https://..."
                 />
               </div>
+              {editError && <ErrorState text={editError} />}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
                 <Button type="button" variant="ghost" onClick={() => setEditingMoto(null)}>
                   Cancelar
