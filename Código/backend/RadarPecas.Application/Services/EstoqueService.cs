@@ -76,16 +76,25 @@ public class EstoqueService : IEstoqueService
                 e.DataFimPromocao,
                 e.DataAtualizacao,
                 Visualizacoes = e.Estatisticas.Sum(s => (int?)s.Visualizacoes) ?? 0,
-                Cliques = e.Estatisticas.Sum(s => (int?)s.Cliques) ?? 0,
-                Compatibilidades = e.Peca != null
-                    ? e.Peca.Compatibilidades
-                        .Where(c => c.ModeloMoto != null)
-                        .Select(c => c.ModeloMoto!.Marca + " " + c.ModeloMoto.Modelo)
-                        .Distinct()
-                        .ToList()
-                    : new List<string>()
+                Cliques = e.Estatisticas.Sum(s => (int?)s.Cliques) ?? 0
             })
             .ToListAsync(cancellationToken);
+
+        var pecaIds = estoques.Select(e => e.PecaId).Distinct().ToList();
+        var compatsPorPeca = pecaIds.Count == 0
+            ? new Dictionary<int, List<string>>()
+            : (await _context.CompatibilidadesPecaMoto
+                    .AsNoTracking()
+                    .Where(c => pecaIds.Contains(c.PecaId) && c.ModeloMoto != null)
+                    .Select(c => new
+                    {
+                        c.PecaId,
+                        Descricao = c.ModeloMoto!.Marca + " " + c.ModeloMoto.Modelo
+                    })
+                    .Distinct()
+                    .ToListAsync(cancellationToken))
+                .GroupBy(x => x.PecaId)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Descricao).ToList());
 
         var items = estoques.Select(e =>
         {
@@ -94,6 +103,7 @@ public class EstoqueService : IEstoqueService
                 (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
                 (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje);
             var precoEfetivo = promoAtiva ? e.PrecoPromocional!.Value : e.PrecoVenda;
+            var compats = compatsPorPeca.GetValueOrDefault(e.PecaId);
 
             return new EstoqueItemResponse
             {
@@ -117,7 +127,7 @@ public class EstoqueService : IEstoqueService
                 PromocaoAtiva = promoAtiva,
                 Visualizacoes = e.Visualizacoes,
                 Cliques = e.Cliques,
-                DescricaoCompatibilidade = e.Compatibilidades.Count > 0 ? string.Join(", ", e.Compatibilidades) : "Universal",
+                DescricaoCompatibilidade = compats != null && compats.Count > 0 ? string.Join(", ", compats) : "Universal",
                 DataAtualizacao = e.DataAtualizacao
             };
         }).ToList();

@@ -218,6 +218,10 @@ function parseHorarios(raw?: string | null): HorarioDia[] {
   return DEFAULT_HORARIOS;
 }
 
+function getCategoriaEstoque(item: EstoqueItemExtended): string {
+  return item.categoriaPeca || item.categoria || '';
+}
+
 function renderCategoryIcon(categoriaNome?: string | null, size = 18) {
   const lower = (categoriaNome || '').toLowerCase();
   if (lower.includes('freio') || lower.includes('pastilha') || lower.includes('disco')) {
@@ -345,7 +349,7 @@ export function LojistaPage() {
           falhas.push('catálogo de peças');
           return [] as Peca[];
         }),
-        api<{ items?: ModeloMoto[] } | ModeloMoto[]>('/garagem/modelos').catch(() => {
+        api<{ items?: ModeloMoto[] } | ModeloMoto[]>('/modelos-moto').catch(() => {
           falhas.push('modelos de moto');
           return [] as ModeloMoto[];
         }),
@@ -657,7 +661,7 @@ export function LojistaPage() {
     const headers = ['ID,Produto,Categoria,SKU,Estoque,Preco,EmPromocao,PrecoPromocional'];
     const rows = estoque.map(
       (i) =>
-        `${i.id},"${i.nomePeca.replace(/"/g, '""')}","${i.categoria || ''}","${i.sku || ''}",${i.quantidadeEstoque},${i.precoVenda},${i.emPromocao},${i.precoPromocional ?? ''}`,
+        `${i.id},"${i.nomePeca.replace(/"/g, '""')}","${getCategoriaEstoque(i)}","${i.sku || ''}",${i.quantidadeEstoque},${i.precoVenda},${i.emPromocao},${i.precoPromocional ?? ''}`,
     );
     const blob = new Blob([headers.concat(rows).join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -669,7 +673,7 @@ export function LojistaPage() {
   }
 
   const categoriasDisponiveis = useMemo(() => {
-    const fromItems = estoque.map((i) => i.categoria).filter(Boolean);
+    const fromItems = estoque.map((i) => getCategoriaEstoque(i)).filter(Boolean);
     return Array.from(new Set([...CATEGORIAS_PADRAO, ...fromItems]));
   }, [estoque]);
 
@@ -683,7 +687,7 @@ export function LojistaPage() {
 
       const matchCat =
         !filtroCategoriaEstoque ||
-        (item.categoria || '').toLowerCase() === filtroCategoriaEstoque.toLowerCase();
+        getCategoriaEstoque(item).toLowerCase() === filtroCategoriaEstoque.toLowerCase();
 
       let matchStatus = true;
       if (filtroStatusEstoque === 'alto') matchStatus = item.quantidadeEstoque > 10;
@@ -713,7 +717,7 @@ export function LojistaPage() {
       (i) =>
         !buscaOfertas.trim() ||
         i.nomePeca.toLowerCase().includes(buscaOfertas.toLowerCase()) ||
-        (i.categoria || '').toLowerCase().includes(buscaOfertas.toLowerCase()),
+        getCategoriaEstoque(i).toLowerCase().includes(buscaOfertas.toLowerCase()),
     );
     if (filtroOfertasTab === 'populares') {
       return [...filtered].sort((a, b) => (b.visualizacoes || 0) - (a.visualizacoes || 0));
@@ -1128,7 +1132,7 @@ export function LojistaPage() {
                                     flexShrink: 0,
                                   }}
                                 >
-                                  {renderCategoryIcon(item.categoria, 18)}
+                                  {renderCategoryIcon(getCategoriaEstoque(item), 18)}
                                 </div>
                                 <div>
                                   <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.nomePeca}</div>
@@ -1769,7 +1773,7 @@ export function LojistaPage() {
                                 flexShrink: 0,
                               }}
                             >
-                              {renderCategoryIcon(item.categoria, 18)}
+                              {renderCategoryIcon(getCategoriaEstoque(item), 18)}
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.nomePeca}</div>
@@ -2216,7 +2220,7 @@ export function LojistaPage() {
                       <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                           <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
-                            {oferta.categoria || 'PEÇAS'}
+                            {getCategoriaEstoque(oferta) || 'PEÇAS'}
                           </span>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button
@@ -2421,7 +2425,7 @@ export function LojistaPage() {
                               flexShrink: 0,
                             }}
                           >
-                            {renderCategoryIcon(itemSelecionadoOferta.categoria, 20)}
+                            {renderCategoryIcon(getCategoriaEstoque(itemSelecionadoOferta), 20)}
                           </div>
                           <div style={{ minWidth: 0 }}>
                             <strong style={{ color: '#0f172a', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemSelecionadoOferta.nomePeca}</strong>

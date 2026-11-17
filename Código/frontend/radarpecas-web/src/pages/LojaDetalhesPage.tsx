@@ -402,7 +402,7 @@ export function LojaDetalhesPage() {
 
                     <div style={{ flex: 1 }}>
                       <div className="chips-row" style={{ marginBottom: 4 }}>
-                        <Chip variant="muted">{item.categoria}</Chip>
+                        <Chip variant="muted">{item.categoriaPeca || item.categoria || 'Peça'}</Chip>
                         {item.promocaoAtiva && <Chip variant="promo">Promoção</Chip>}
                       </div>
 

@@ -41,7 +41,7 @@ export function Layout() {
             updateSwRef.current = update;
           })
           .catch(() => {});
-      }, 1500);
+      }, 300);
     };
 
     if (document.readyState === 'complete') {

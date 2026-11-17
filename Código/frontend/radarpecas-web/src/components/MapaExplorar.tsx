@@ -434,7 +434,7 @@ export default function MapaExplorar({
           <SearchIcon size={18} />
           <input
             ref={searchInputRef}
-            type="search"
+            type="text"
             placeholder="Buscar localização..."
             value={locationQuery}
             onChange={(e) => {

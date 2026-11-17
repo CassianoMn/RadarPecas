@@ -139,7 +139,8 @@ export interface EstoqueItem {
   lojaId: string;
   pecaId: number;
   nomePeca: string;
-  categoria: string;
+  categoria?: string | null;
+  categoriaPeca?: string | null;
   sku?: string | null;
   fotoPecaUrl?: string | null;
   quantidadeEstoque: number;

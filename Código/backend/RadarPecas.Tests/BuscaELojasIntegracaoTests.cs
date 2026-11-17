@@ -242,4 +242,29 @@ public class BuscaELojasIntegracaoTests
         Assert.Empty(ctx.Lojas);
         Assert.Empty(ctx.Usuarios);
     }
+
+    [Fact]
+    public async Task ListarEstoqueLojaAsync_DevePaginarECarregarCompatibilidadesEmLote()
+    {
+        await using var ctx = CriarContextoInMemory();
+        await PopularCenarioAsync(ctx);
+
+        var modelo = new ModeloMoto { Id = 1, Marca = "Honda", Modelo = "CG 160 Titan", AnoInicio = 2016 };
+        ctx.ModelosMoto.Add(modelo);
+        ctx.CompatibilidadesPecaMoto.Add(new CompatibilidadePecaMoto { PecaId = 1, ModeloMotoId = 1 });
+        await ctx.SaveChangesAsync();
+
+        var loja = await ctx.Lojas.FirstAsync(l => l.NomeFantasia == "Itabaiana Motos");
+        var service = new EstoqueService(ctx, new GeolocationService());
+
+        var res = await service.ListarEstoqueLojaAsync(loja.Id, page: 1, pageSize: 10);
+
+        Assert.True(res.Success);
+        Assert.NotNull(res.Data);
+        Assert.Equal(2, res.Data!.TotalCount);
+        var itemPastilha = res.Data.Items.First(i => i.PecaId == 1);
+        Assert.Contains("Honda CG 160 Titan", itemPastilha.DescricaoCompatibilidade);
+        var itemPneu = res.Data.Items.First(i => i.PecaId == 2);
+        Assert.Equal("Universal", itemPneu.DescricaoCompatibilidade);
+    }
 }
