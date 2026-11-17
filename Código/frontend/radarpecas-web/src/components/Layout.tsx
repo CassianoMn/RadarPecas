@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { useAuth } from '../auth/useAuth';
+import { MobileTabBar } from './MobileTabBar';
 import { ArrowLeftIcon, RadarLogo, SearchIcon } from './ui';
 
 export function Layout() {
@@ -27,7 +28,9 @@ export function Layout() {
   const isFullWidth = isHome || isLojistaPanel;
   const isAuthPage =
     location.pathname === '/login' || location.pathname === '/cadastro';
+  const isOfertaDetalhe = location.pathname.startsWith('/ofertas/');
   const isLojistaUser = user?.tipoUsuario === 'LOJISTA';
+  const showMobileTabBar = !isAuthPage && !isLojistaPanel && !isOfertaDetalhe;
 
   // Fechar dropdown ao navegar para outra rota
   useEffect(() => {
@@ -87,6 +90,10 @@ export function Layout() {
 
   return (
     <div className="shell">
+      <a className="skip-link" href="#conteudo">
+        Pular para o conteúdo
+      </a>
+
       <header className="topbar">
         {/* Seta Voltar se não estiver na Home nem em Auth nem no Painel Lojista */}
         {!isHome && !isAuthPage && !isLojistaPanel && (
@@ -179,6 +186,12 @@ export function Layout() {
             </Link>
           )}
 
+          {isLojistaPanel && (
+            <Link className="btn-garage-top" to="/">
+              Ver site
+            </Link>
+          )}
+
           {user ? (
             <div ref={userDropdownRef} style={{ position: 'relative' }}>
               <button
@@ -217,16 +230,26 @@ export function Layout() {
                   </div>
                   <div className="user-dropdown-body">
                     {isLojistaUser && (
-                      <NavLink
-                        to="/lojista"
-                        role="menuitem"
-                        className={({ isActive }) =>
-                          `user-dropdown-item${isActive ? ' active' : ''}`
-                        }
-                        onClick={() => setShowUserDropdown(false)}
-                      >
-                        Painel Lojista
-                      </NavLink>
+                      <>
+                        <NavLink
+                          to="/lojista"
+                          role="menuitem"
+                          className={({ isActive }) =>
+                            `user-dropdown-item${isActive ? ' active' : ''}`
+                          }
+                          onClick={() => setShowUserDropdown(false)}
+                        >
+                          Painel Lojista
+                        </NavLink>
+                        <NavLink
+                          to="/"
+                          role="menuitem"
+                          className="user-dropdown-item"
+                          onClick={() => setShowUserDropdown(false)}
+                        >
+                          Ver site público
+                        </NavLink>
+                      </>
                     )}
                     <NavLink
                       to="/garagem"
@@ -263,9 +286,8 @@ export function Layout() {
           ) : (
             !isAuthPage && (
               <Link
-                className="btn btn-outline"
+                className="btn btn-outline topbar-login-btn"
                 to="/login"
-                style={{ padding: '7px 14px', fontSize: '0.8rem' }}
               >
                 Entrar
               </Link>
@@ -274,8 +296,13 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Conteúdo da Página: full width se for a tela de Explorar ou Painel Lojista, ou content-wrap com margem nas outras telas */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      {/* Conteúdo da Página */}
+      <main
+        id="conteudo"
+        tabIndex={-1}
+        className={showMobileTabBar ? 'has-mobile-tab-bar' : undefined}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', outline: 'none' }}
+      >
         {isFullWidth ? (
           <Outlet />
         ) : (
@@ -284,6 +311,8 @@ export function Layout() {
           </div>
         )}
       </main>
+
+      {showMobileTabBar && <MobileTabBar />}
     </div>
   );
 }

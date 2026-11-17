@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { Navigation } from 'lucide-react';
 import { api } from '../lib/api';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
@@ -34,8 +35,14 @@ export function OfertaDetalhesPage() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
+  function registrarClique() {
+    if (!oferta) return;
+    void api(`/ofertas/${oferta.estoqueId}/clique`, { method: 'POST' }).catch(() => {});
+  }
+
   function handleReservar() {
     setReservado(true);
+    registrarClique();
     if (oferta?.loja.telefoneContato) {
       const cleanPhone = oferta.loja.telefoneContato.replace(/\D/g, '');
       const msg = encodeURIComponent(
@@ -47,6 +54,7 @@ export function OfertaDetalhesPage() {
 
   function handleIrAteALoja() {
     if (!oferta) return;
+    registrarClique();
     const endereco = encodeURIComponent(oferta.loja.enderecoCompleto);
     window.open(`https://www.google.com/maps/search/?api=1&query=${endereco}`, '_blank', 'noopener,noreferrer');
   }
@@ -75,7 +83,7 @@ export function OfertaDetalhesPage() {
   );
 
   return (
-    <section>
+    <section className="oferta-detalhe-page">
       {/* Layout em Duas Colunas */}
       <div className="details-layout">
         {/* COLUNA ESQUERDA: FOTO GRANDE + MINIATURAS + ESPECIFICAÇÕES */}
@@ -225,16 +233,18 @@ export function OfertaDetalhesPage() {
               </p>
             </div>
 
-            {/* Botão Reservar na Loja Física */}
-            <Button
-              type="button"
-              variant="outline"
-              block
-              onClick={handleReservar}
-              style={{ padding: '12px', fontSize: '0.88rem' }}
-            >
-              Reservar na Loja Física
-            </Button>
+            {/* Botão Reservar na Loja Física (Desktop; no mobile fica fixo na barra inferior) */}
+            <div className="desktop-only-reserve">
+              <Button
+                type="button"
+                variant="outline"
+                block
+                onClick={handleReservar}
+                style={{ padding: '12px', fontSize: '0.88rem' }}
+              >
+                Reservar na Loja Física
+              </Button>
+            </div>
 
             {reservado && (
               <p style={{ color: '#006375', fontSize: '0.82rem', textAlign: 'center', marginTop: 8 }}>
@@ -339,6 +349,36 @@ export function OfertaDetalhesPage() {
             </button>
           </Card>
         </div>
+      </div>
+
+      {/* Barra fixa inferior de ação mobile */}
+      <div className="mobile-offer-action-bar" role="region" aria-label="Ações rápidas da oferta">
+        <div className="mobile-offer-price-col">
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block' }}>
+            Preço à vista
+          </span>
+          <strong style={{ fontSize: '1.25rem', fontWeight: 800, color: '#006375', lineHeight: 1.1 }}>
+            {formatMoney(oferta.precoEfetivo)}
+          </strong>
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-primary mobile-offer-reserve-btn"
+          onClick={handleReservar}
+        >
+          Reservar
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-outline mobile-offer-route-btn"
+          onClick={handleIrAteALoja}
+          aria-label="Ir até a loja no mapa"
+          title="Ir até a loja"
+        >
+          <Navigation size={18} aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
