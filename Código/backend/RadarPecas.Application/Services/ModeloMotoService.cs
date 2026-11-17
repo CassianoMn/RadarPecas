@@ -26,8 +26,11 @@ public class ModeloMotoService : IModeloMotoService
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
-            var termo = busca.Trim().ToLower();
-            query = query.Where(m => m.Modelo.ToLower().Contains(termo) || m.Marca.ToLower().Contains(termo));
+            query = _context.FiltrarPorTexto(
+                query,
+                busca,
+                m => m.Modelo,
+                m => m.Marca);
         }
 
         var modelos = await query

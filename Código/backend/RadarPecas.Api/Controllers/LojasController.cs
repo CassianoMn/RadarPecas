@@ -47,6 +47,21 @@ public class LojasController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("paginadas")]
+    [EnableRateLimiting("busca")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarPaginadas(
+        [FromQuery] decimal? userLat,
+        [FromQuery] decimal? userLon,
+        [FromQuery] decimal? raioKm,
+        [FromQuery] string? ordenacao = "proximas",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
+    {
+        var result = await _lojaService.ListarLojasPaginadoAsync(userLat, userLon, raioKm, ordenacao, page, pageSize);
+        return Ok(result);
+    }
+
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

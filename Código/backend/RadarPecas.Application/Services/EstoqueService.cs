@@ -28,29 +28,24 @@ public class EstoqueService : IEstoqueService
 
         var query = _context.EstoqueLojas
             .AsNoTracking()
-            .Include(e => e.Peca)
-                .ThenInclude(p => p!.Compatibilidades)
-                    .ThenInclude(c => c.ModeloMoto)
-            .Include(e => e.Loja)
-            .Include(e => e.Estatisticas)
             .Where(e => e.LojaId == lojaId);
 
         if (!string.IsNullOrWhiteSpace(busca))
         {
-            var b = busca.Trim().ToLower();
-            query = query.Where(e =>
-                e.Peca != null && (
-                    e.Peca.Nome.ToLower().Contains(b) ||
-                    e.Peca.Categoria.ToLower().Contains(b) ||
-                    (e.Peca.Sku != null && e.Peca.Sku.ToLower().Contains(b)) ||
-                    (e.Peca.CodigoEan != null && e.Peca.CodigoEan.Contains(b))
-                ));
+            query = _context.FiltrarPorTexto(
+                query,
+                busca,
+                e => e.Peca!.Nome,
+                e => e.Peca!.Categoria,
+                e => e.Peca!.Sku,
+                e => e.Peca!.CodigoEan);
         }
 
+        var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
         if (apenasPromocao.HasValue && apenasPromocao.Value)
         {
-            var hoje = DateOnly.FromDateTime(DateTime.UtcNow);
             query = query.Where(e => e.EmPromocao &&
+                e.PrecoPromocional.HasValue &&
                 (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
                 (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje));
         }
@@ -61,39 +56,68 @@ public class EstoqueService : IEstoqueService
             .OrderBy(e => e.Peca != null ? e.Peca.Nome : "")
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(e => new
+            {
+                e.Id,
+                e.LojaId,
+                NomeLoja = e.Loja != null ? e.Loja.NomeFantasia : string.Empty,
+                e.PecaId,
+                NomePeca = e.Peca != null ? e.Peca.Nome : string.Empty,
+                CategoriaPeca = e.Peca != null ? e.Peca.Categoria : string.Empty,
+                FotoPecaUrl = e.Peca != null ? e.Peca.FotoPecaUrl : null,
+                Sku = e.Peca != null ? e.Peca.Sku : null,
+                CodigoEan = e.Peca != null ? e.Peca.CodigoEan : null,
+                e.QuantidadeEstoque,
+                e.AlertaEstoqueMinimo,
+                e.PrecoVenda,
+                e.EmPromocao,
+                e.PrecoPromocional,
+                e.DataInicioPromocao,
+                e.DataFimPromocao,
+                e.DataAtualizacao,
+                Visualizacoes = e.Estatisticas.Sum(s => (int?)s.Visualizacoes) ?? 0,
+                Cliques = e.Estatisticas.Sum(s => (int?)s.Cliques) ?? 0,
+                Compatibilidades = e.Peca != null
+                    ? e.Peca.Compatibilidades
+                        .Where(c => c.ModeloMoto != null)
+                        .Select(c => c.ModeloMoto!.Marca + " " + c.ModeloMoto.Modelo)
+                        .Distinct()
+                        .ToList()
+                    : new List<string>()
+            })
             .ToListAsync(cancellationToken);
 
         var items = estoques.Select(e =>
         {
-            var comps = e.Peca?.Compatibilidades?
-                .Where(c => c.ModeloMoto != null)
-                .Select(c => $"{c.ModeloMoto!.Marca} {c.ModeloMoto.Modelo}")
-                .Distinct()
-                .ToList() ?? new List<string>();
+            var promoAtiva = e.EmPromocao &&
+                e.PrecoPromocional.HasValue &&
+                (!e.DataInicioPromocao.HasValue || e.DataInicioPromocao.Value <= hoje) &&
+                (!e.DataFimPromocao.HasValue || e.DataFimPromocao.Value >= hoje);
+            var precoEfetivo = promoAtiva ? e.PrecoPromocional!.Value : e.PrecoVenda;
 
             return new EstoqueItemResponse
             {
                 Id = e.Id,
                 LojaId = e.LojaId,
-                NomeLoja = e.Loja?.NomeFantasia ?? string.Empty,
+                NomeLoja = e.NomeLoja,
                 PecaId = e.PecaId,
-                NomePeca = e.Peca?.Nome ?? string.Empty,
-                CategoriaPeca = e.Peca?.Categoria ?? string.Empty,
-                FotoPecaUrl = e.Peca?.FotoPecaUrl,
-                Sku = e.Peca?.Sku,
-                CodigoEan = e.Peca?.CodigoEan,
+                NomePeca = e.NomePeca,
+                CategoriaPeca = e.CategoriaPeca,
+                FotoPecaUrl = e.FotoPecaUrl,
+                Sku = e.Sku,
+                CodigoEan = e.CodigoEan,
                 QuantidadeEstoque = e.QuantidadeEstoque,
                 AlertaEstoqueMinimo = e.AlertaEstoqueMinimo,
                 PrecoVenda = e.PrecoVenda,
                 EmPromocao = e.EmPromocao,
                 PrecoPromocional = e.PrecoPromocional,
-                PrecoEfetivo = e.PrecoEfetivo,
+                PrecoEfetivo = precoEfetivo,
                 DataInicioPromocao = e.DataInicioPromocao,
                 DataFimPromocao = e.DataFimPromocao,
-                PromocaoAtiva = e.PromocaoAtiva,
-                Visualizacoes = e.Estatisticas?.Sum(s => s.Visualizacoes) ?? 0,
-                Cliques = e.Estatisticas?.Sum(s => s.Cliques) ?? 0,
-                DescricaoCompatibilidade = comps.Count > 0 ? string.Join(", ", comps) : "Universal",
+                PromocaoAtiva = promoAtiva,
+                Visualizacoes = e.Visualizacoes,
+                Cliques = e.Cliques,
+                DescricaoCompatibilidade = e.Compatibilidades.Count > 0 ? string.Join(", ", e.Compatibilidades) : "Universal",
                 DataAtualizacao = e.DataAtualizacao
             };
         }).ToList();

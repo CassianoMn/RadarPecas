@@ -127,6 +127,11 @@ public class AuthService : IAuthService
             return ApiResponse<LoginResponse>.Fail("Informe um e-mail válido.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.EmailContato) && !SegurancaValidacao.EmailValido(request.EmailContato))
+        {
+            return ApiResponse<LoginResponse>.Fail("Informe um e-mail de contato válido.");
+        }
+
         if (!SegurancaValidacao.SenhaForte(request.Senha))
         {
             return ApiResponse<LoginResponse>.Fail("A senha deve ter no mínimo 8 caracteres, com letras e números.");
@@ -140,6 +145,11 @@ public class AuthService : IAuthService
 
         if (!string.IsNullOrWhiteSpace(request.Cnpj))
         {
+            if (!SegurancaValidacao.CnpjValido(request.Cnpj))
+            {
+                return ApiResponse<LoginResponse>.Fail("CNPJ inválido. Verifique os dígitos informados.");
+            }
+
             var cnpjExiste = await _context.Lojas.AnyAsync(l => l.Cnpj == request.Cnpj.Trim(), cancellationToken);
             if (cnpjExiste)
             {
@@ -147,16 +157,21 @@ public class AuthService : IAuthService
             }
         }
 
-        decimal lat = request.Latitude ?? -23.5329m;
-        decimal lon = request.Longitude ?? -46.6326m;
+        decimal lat = request.Latitude ?? 0m;
+        decimal lon = request.Longitude ?? 0m;
 
-        if (!string.IsNullOrWhiteSpace(request.EnderecoCompleto) && (!request.Latitude.HasValue || !request.Longitude.HasValue))
+        if (!SegurancaValidacao.CoordenadasValidas(lat, lon))
         {
             var coords = await _geocodingService.GeocodeAddressAsync(request.EnderecoCompleto, cancellationToken);
-            if (coords.HasValue)
+            if (coords.HasValue && SegurancaValidacao.CoordenadasValidas(coords.Value.Latitude, coords.Value.Longitude))
             {
                 lat = coords.Value.Latitude;
                 lon = coords.Value.Longitude;
+            }
+            else
+            {
+                return ApiResponse<LoginResponse>.Fail(
+                    "Não foi possível localizar o endereço da loja. Informe rua, número, cidade e UF completos ou selecione uma sugestão.");
             }
         }
 

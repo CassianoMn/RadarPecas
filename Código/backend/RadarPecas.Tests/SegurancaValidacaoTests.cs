@@ -31,4 +31,27 @@ public class SegurancaValidacaoTests
     {
         Assert.Equal(esperado, SegurancaValidacao.SenhaForte(senha));
     }
+
+    [Theory]
+    [InlineData("11.222.333/0001-81", true)]
+    [InlineData("11222333000181", true)]
+    [InlineData("11.222.333/0001-82", false)] // DV inválido
+    [InlineData("11.111.111/1111-11", false)] // sequência repetida
+    [InlineData("123", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void CnpjValido_ValidaDigitosVerificadores(string? cnpj, bool esperado)
+    {
+        Assert.Equal(esperado, SegurancaValidacao.CnpjValido(cnpj));
+    }
+
+    [Theory]
+    [InlineData(-10.6850, -37.4252, true)]
+    [InlineData(0, 0, false)]
+    [InlineData(-91, -37, false)]
+    [InlineData(-10, 181, false)]
+    public void CoordenadasValidas_RejeitaZeroEOutOfBounds(double lat, double lon, bool esperado)
+    {
+        Assert.Equal(esperado, SegurancaValidacao.CoordenadasValidas((decimal)lat, (decimal)lon));
+    }
 }

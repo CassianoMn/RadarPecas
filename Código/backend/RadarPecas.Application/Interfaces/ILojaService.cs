@@ -6,6 +6,7 @@ namespace RadarPecas.Application.Interfaces;
 public interface ILojaService
 {
     Task<ApiResponse<List<LojaResponse>>> ListarLojasAsync(decimal? userLat = null, decimal? userLon = null, decimal? raioKm = null, CancellationToken cancellationToken = default);
+    Task<ApiResponse<PagedResult<LojaResponse>>> ListarLojasPaginadoAsync(decimal? userLat = null, decimal? userLon = null, decimal? raioKm = null, string? ordenacao = "proximas", int page = 1, int pageSize = 12, CancellationToken cancellationToken = default);
     Task<ApiResponse<LojaResponse>> ObterLojaPorIdAsync(Guid id, decimal? userLat = null, decimal? userLon = null, CancellationToken cancellationToken = default);
     Task<ApiResponse<LojaResponse>> ObterLojaPorUsuarioIdAsync(Guid usuarioId, CancellationToken cancellationToken = default);
     Task<ApiResponse<LojaResponse>> CriarLojaAsync(Guid usuarioId, CreateLojaRequest request, CancellationToken cancellationToken = default);

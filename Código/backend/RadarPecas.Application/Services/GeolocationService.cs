@@ -36,6 +36,26 @@ public class GeolocationService : IGeolocationService
         return distancia <= raioKm;
     }
 
+    public (decimal MinLat, decimal MaxLat, decimal MinLon, decimal MaxLon) CalcularBoundingBox(decimal lat, decimal lon, decimal raioKm)
+    {
+        if (raioKm <= 0)
+        {
+            return (-90m, 90m, -180m, 180m);
+        }
+
+        // Margem de ~111.045 km por grau de latitude com pequena folga numérica
+        var deltaLat = (double)raioKm / 111.0;
+        var cosLat = Math.Max(0.01, Math.Abs(Math.Cos(ToRadians((double)lat))));
+        var deltaLon = deltaLat / cosLat;
+
+        var minLat = Math.Clamp(lat - (decimal)deltaLat, -90m, 90m);
+        var maxLat = Math.Clamp(lat + (decimal)deltaLat, -90m, 90m);
+        var minLon = Math.Clamp(lon - (decimal)deltaLon, -180m, 180m);
+        var maxLon = Math.Clamp(lon + (decimal)deltaLon, -180m, 180m);
+
+        return (minLat, maxLat, minLon, maxLon);
+    }
+
     private static double ToRadians(double degrees)
     {
         return degrees * (Math.PI / 180.0);
