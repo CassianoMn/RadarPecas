@@ -129,6 +129,105 @@ export function parseHorariosFuncionamento(horarios?: string | null): HorarioIte
   return [{ label: '', valor: cleanedText }];
 }
 
+export function formatMoneyBR(valor: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(valor);
+}
+
+export interface HorarioDia {
+  dia: string;
+  abre: string;
+  fecha: string;
+  fechado: boolean;
+}
+
+export const DEFAULT_HORARIOS_LOJA: HorarioDia[] = [
+  { dia: 'Segunda', abre: '08:00', fecha: '18:00', fechado: false },
+  { dia: 'Terça', abre: '08:00', fecha: '18:00', fechado: false },
+  { dia: 'Quarta', abre: '08:00', fecha: '18:00', fechado: false },
+  { dia: 'Quinta', abre: '08:00', fecha: '18:00', fechado: false },
+  { dia: 'Sexta', abre: '08:00', fecha: '18:00', fechado: false },
+  { dia: 'Sábado', abre: '08:00', fecha: '13:00', fechado: false },
+  { dia: 'Domingo', abre: '00:00', fecha: '00:00', fechado: true },
+];
+
+function extractIntervaloHorario(
+  valor: unknown,
+  fallbackAbre: string,
+  fallbackFecha: string,
+): { abre: string; fecha: string; fechado: boolean } {
+  if (!valor || typeof valor !== 'string') {
+    return { abre: fallbackAbre, fecha: fallbackFecha, fechado: false };
+  }
+  const parts = valor.split(/[-–às]/).map((p) => p.trim());
+  if (parts.length >= 2) {
+    return { abre: parts[0].slice(0, 5), fecha: parts[1].slice(0, 5), fechado: false };
+  }
+  if (valor.toLowerCase().includes('fechado')) {
+    return { abre: fallbackAbre, fecha: fallbackFecha, fechado: true };
+  }
+  return { abre: fallbackAbre, fecha: fallbackFecha, fechado: false };
+}
+
+/**
+ * Converte a string de horários (JSON array do painel, JSON legado `{ seg_sex, sab, dom }` ou texto)
+ * para os 7 dias editáveis do Painel do Lojista.
+ */
+export function parseHorariosEditor(raw?: string | null): HorarioDia[] {
+  if (!raw) return DEFAULT_HORARIOS_LOJA;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return DEFAULT_HORARIOS_LOJA.map((def) => {
+        const found = parsed.find(
+          (p: Record<string, unknown> | null) =>
+            p &&
+            typeof p === 'object' &&
+            p.dia &&
+            String(p.dia).toLowerCase().trim() === def.dia.toLowerCase().trim(),
+        );
+        if (found) {
+          return {
+            dia: def.dia,
+            abre: typeof found.abre === 'string' && found.abre ? found.abre : def.abre,
+            fecha: typeof found.fecha === 'string' && found.fecha ? found.fecha : def.fecha,
+            fechado: Boolean(found.fechado),
+          };
+        }
+        return def;
+      });
+    }
+
+    if (typeof parsed === 'object' && parsed !== null) {
+      const obj = parsed as Record<string, unknown>;
+      const segSex = extractIntervaloHorario(
+        obj.seg_sex || obj['seg-sex'] || obj.seg_a_sex,
+        '08:00',
+        '18:00',
+      );
+      const sab = extractIntervaloHorario(obj.sab || obj.sabado || obj['sábado'], '08:00', '13:00');
+      const domVal = obj.dom || obj.domingo;
+      const fechadoDom =
+        !domVal || typeof domVal !== 'string' || domVal.toLowerCase().includes('fechado');
+
+      return [
+        { dia: 'Segunda', ...segSex },
+        { dia: 'Terça', ...segSex },
+        { dia: 'Quarta', ...segSex },
+        { dia: 'Quinta', ...segSex },
+        { dia: 'Sexta', ...segSex },
+        { dia: 'Sábado', ...sab },
+        { dia: 'Domingo', abre: '00:00', fecha: '00:00', fechado: fechadoDom },
+      ];
+    }
+  } catch {
+    // Segue para fallback padrão
+  }
+  return DEFAULT_HORARIOS_LOJA;
+}
+
 /**
  * Formata a string de horários para exibição compacta inline (ex: cards da HomePage).
  * Exemplo: "Seg a Sex: 08:00 - 18:00 • Sáb: 08:00 - 13:00"

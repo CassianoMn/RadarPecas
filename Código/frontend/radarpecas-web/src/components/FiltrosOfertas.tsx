@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { Link } from 'react-router-dom';
 import type { ActiveMoto } from '../context/active-moto-context';
+import { formatMoneyBR } from '../lib/formatters';
 
 export type DistanciaPill = '5km' | '15km' | '+15km';
 
@@ -23,10 +24,6 @@ interface FiltrosOfertasProps {
   onSolicitarLocalizacao: () => void;
   onLimparFiltros: () => void;
   activeMoto: ActiveMoto | null;
-}
-
-function formatMoney(valor: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 }
 
 export function FiltrosOfertas({
@@ -155,7 +152,7 @@ export function FiltrosOfertas({
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           <span>R$ 50</span>
-          <span style={{ fontWeight: 700, color: '#006375' }}>Até {formatMoney(precoMaximo)}</span>
+          <span style={{ fontWeight: 700, color: '#006375' }}>Até {formatMoneyBR(precoMaximo)}</span>
         </div>
       </div>
 
