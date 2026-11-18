@@ -11,9 +11,9 @@ O **RadarPeças** é uma plataforma web desenvolvida para mitigar a assimetria d
 
 ### 🌟 Diferenciais e Funcionalidades Principais
 
-- **Garagem Virtual (Filtragem Baseada em Conhecimento):** O motociclista cadastra suas motos (marca, modelo, ano, cilindrada). O sistema filtra automaticamente o catálogo para exibir somente peças tecnicamente compatíveis, eliminando compras incorretas.
-- **Busca Geolocalizada e Mapa Interativo:** Utilizando PostGIS, Leaflet e OpenStreetMap, a plataforma localiza lojas num raio configurável e plota as ofertas mais próximas em tempo real.
-- **Painel Administrativo do Lojista (Mobile-First & Baixa Fricção):** Gestão simplificada de catálogo, estoque, alteração dinâmica de preços, cadastro de promoções relâmpago e visualização de métricas (peças mais buscadas e visualizações).
+- **Garagem Virtual (Filtragem Baseada em Conhecimento):** O motociclista cadastra suas motos (marca, modelo e ano). O sistema filtra automaticamente o catálogo para exibir somente peças tecnicamente compatíveis, eliminando compras incorretas.
+- **Busca Geolocalizada e Mapa Interativo:** Utilizando PostgreSQL (`DECIMAL(10,8)` / `DECIMAL(11,8)` com índice B-tree + Bounding Box + Haversine SQL e índices GIN `pg_trgm`, conforme [ADR-001](./docs/adr/001-geolocalizacao-haversine-vs-postgis.md)), Leaflet e OpenStreetMap, a plataforma localiza lojas num raio configurável e exibe as ofertas mais próximas e bem avaliadas.
+- **Painel Administrativo do Lojista (Mobile-First & Baixa Fricção):** Painel modularizado em 7 visões (`Resumo`, `Novo Produto`, `Estoque e Preços`, `Ofertas Ativas`, `Criar Nova Oferta`, `Mais Procurados`, `Perfil da Loja`), alteração inline de preço/estoque/promoção, wizard com pré-visualização e métricas reais de visualizações e cliques.
 - **Avaliações e Autorregulação:** Sistema de notas e feedbacks da experiência na loja física.
 
 ---
@@ -22,18 +22,19 @@ O **RadarPeças** é uma plataforma web desenvolvida para mitigar a assimetria d
 
 | Camada | Tecnologia / Ferramenta | Detalhes |
 |---|---|---|
-| **Back-end** | C# / ASP.NET Core (.NET 8) | Web API RESTful, Injeção de Dependências, Arquitetura Limpa/Modular |
-| **Banco de Dados** | PostgreSQL + PostGIS | Tipos geométricos/geográficos, indexação espacial (GiST), JSONB para especificações de peças |
-| **ORM / Migrations** | Entity Framework Core / Npgsql | Mapeamento relacional e suporte a dados geoespaciais (`NetTopologySuite`) |
-| **Front-end** | React 19 + TypeScript + Vite | SPA responsiva (Mobile-First), Vanilla CSS com Design System personalizado |
-| **Mapas & Geocoding** | Leaflet.js / React-Leaflet + OpenStreetMap + Nominatim | Base cartográfica aberta e geocodificação de endereços |
-| **Autenticação** | JWT (JSON Web Token) + BCrypt / ASP.NET Identity | Autenticação stateless baseada em perfis (`Motociclista`, `Lojista`) |
+| **Back-end** | C# / ASP.NET Core (.NET 8) | Web API RESTful (`Domain`, `Application`, `Infrastructure`, `Api`), Rate Limiting, Serilog estruturado |
+| **Banco de Dados** | PostgreSQL 14+ (Supabase em prod) | Coordenadas `DECIMAL` + Bounding Box/Haversine SQL, índices B-tree e GIN `pg_trgm`, `JSONB` |
+| **ORM & Schema** | Entity Framework Core 8 + Npgsql | DDL canônico (`AnaliseProjeto/DB_radarPecas.sql`) aplicado via `DatabaseInitializer` idempotente ([ADR-002](./docs/adr/002-schema-sql-vs-ef-migrations.md)) |
+| **Front-end & PWA** | React 19 + TypeScript 6 + Vite 8 | SPA/PWA responsiva (`vite-plugin-pwa`), Design System CSS, code splitting por rota/vendor |
+| **Mapas & Geocoding** | Leaflet 1.9 + OpenStreetMap + Nominatim/Photon | Base cartográfica aberta com proxy de autocomplete no servidor (`/api/geocoding/sugestoes`) |
+| **Autenticação** | JWT (HMAC-SHA256) + BCrypt | Stateless por perfis (`Motociclista`, `LOJISTA`), validação horizontal (anti-IDOR) e persistência transacional |
+| **Testes** | xUnit + Moq + `WebApplicationFactory` · Vitest + Testing Library | 67 testes no back-end + 9 testes no front-end + auditoria Lighthouse CI (Slow 4G) |
 
 ---
 
 ## Arquitetura conceitual
 
-A aplicação é dividida em front-end e back-end, comunicando-se por uma API REST.
+A aplicação é dividida em front-end e back-end, comunicando-se por uma API REST (publicada via **Vercel** no front-end e **Docker/Render + PostgreSQL Supabase** no back-end).
 
 ```text
 ┌───────────────────────────────┐
@@ -54,7 +55,7 @@ A aplicação é dividida em front-end e back-end, comunicando-se por uma API RE
                 │ SQL
                 ▼
 ┌───────────────────────────────┐
-│      PostgreSQL + PostGIS     │
+│      PostgreSQL 14+           │
 │                               │
 │ Usuários / Lojas              │
 │ Garagem / Modelos              │
@@ -113,13 +114,13 @@ disponibilidade / promoção
 
 ### Geolocalização
 
-As lojas possuem coordenadas geográficas. Endereços podem ser convertidos em latitude e longitude por meio do Nominatim, enquanto o PostGIS é responsável pelo armazenamento e pelas consultas espaciais.
+As lojas possuem coordenadas geográficas (`latitude`, `longitude`). Endereços são sugeridos e convertidos via proxy de geocoding no back-end (Nominatim / Photon), enquanto o PostgreSQL executa pré-filtro por *bounding box* sobre índice B-tree composto e calcula distâncias via Haversine SQL ([ADR-001](./docs/adr/001-geolocalizacao-haversine-vs-postgis.md)).
 
-O front-end utiliza Leaflet/React Leaflet para apresentar o mapa e os marcadores das lojas.
+O front-end utiliza Leaflet para apresentar o mapa principal e o mini-mapa de localização das lojas.
 
 ## Modelo de dados
 
-O modelo definido na proposta possui, entre outras, as seguintes estruturas:
+O modelo definido na proposta possui as 9 tabelas documentadas em [`AnaliseProjeto/DER.png`](./AnaliseProjeto/DER.png), [`AnaliseProjeto/DER.mmd`](./AnaliseProjeto/DER.mmd) e [`docs/dicionario-dados.md`](./docs/dicionario-dados.md):
 
 - `usuarios`
 - `lojas`
@@ -136,13 +137,13 @@ A tabela `estoque_loja` representa a relação entre catálogo e loja, armazenan
 
 ## 🏛️ Arquitetura do Banco de Dados
 
-O banco de dados relacional e espacial é estruturado em quatro módulos centrais:
+O banco de dados relacional é estruturado em cinco grupos centrais:
 
-1. **Acesso e Perfis:** `usuarios` (motociclistas e lojistas) e `lojas` (dados cadastrais, contato, horário e coordenadas geográficas `GEOMETRY(Point, 4326)`).
-2. **Catálogo e Compatibilidade:** `pecas` (código EAN, categoria, especificações via JSONB), `modelos_moto` (marca, modelo, cilindrada, anos inicial e final) e a tabela associativa `compatibilidade_peca_moto`.
+1. **Acesso e Perfis:** `usuarios` (motociclistas e lojistas) e `lojas` (dados cadastrais, contato, horários em `JSONB` e coordenadas geográficas `DECIMAL`).
+2. **Catálogo e Compatibilidade:** `pecas` (SKU/EAN, categoria, imagem, especificações via `JSONB`), `modelos_moto` (marca, modelo, anos inicial e final) e a tabela associativa `compatibilidade_peca_moto`.
 3. **Garagem Virtual:** `garagem_virtual` vinculando os usuários aos seus veículos cadastrados.
 4. **Inventário e Ofertas:** `estoque_loja` (quantidade física, preço normal, flag de promoção, preço promocional e vigência de datas).
-5. **Engajamento e Métricas:** `avaliacoes_loja` (notas e comentários) e `estatisticas_oferta` (cliques e visualizações).
+5. **Engajamento e Métricas:** `avaliacoes_loja` (notas e comentários) e `estatisticas_oferta` (cliques e visualizações incrementados atomicamente).
 
 ---
 
@@ -150,8 +151,8 @@ O banco de dados relacional e espacial é estruturado em quatro módulos centrai
 
 ### 📋 Pré-requisitos
 - **.NET 8 SDK** (para compilar e rodar a API ASP.NET Core)
-- **Node.js 18+ (LTS)** e **npm** (para o front-end React)
-- **PostgreSQL 14+** com extensão **PostGIS** habilitada (porta padrão: `5432`)
+- **Node.js 20+ (LTS)** e **npm** (para o front-end React)
+- **PostgreSQL 14+** (porta padrão: `5432`)
 
 ---
 
@@ -171,34 +172,51 @@ Esse script verifica as dependências, valida a conexão com o PostgreSQL, insta
 ### 🔧 Execução Manual
 
 #### 1. Banco de Dados
-Certifique-se de que o PostgreSQL está em execução na porta `5432` e crie o banco especificado no `appsettings.Development.json` (por exemplo, `radarpecas_db` ou `radarPecas`):
+Certifique-se de que o PostgreSQL está em execução na porta `5432` e crie o banco especificado no `appsettings.Development.json` (`radarPecas`, usuário padrão `postgres`):
 
 ```sql
-CREATE DATABASE "radarpecas_db";
-\c "radarpecas_db";
-CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE DATABASE "radarPecas";
 ```
 
-> **Nota:** Ao iniciar, a API executa automaticamente o script `AnaliseProjeto/DB_radarPecas.sql` por meio do `DatabaseInitializer` e popula a base com o `DatabaseSeeder`, caso a base esteja vazia.
+> **Nota:** Ao iniciar, a API executa automaticamente o script `AnaliseProjeto/DB_radarPecas.sql` e rotinas idempotentes de índices (`pg_trgm`) por meio do `DatabaseInitializer`, populando a base inicial com `DatabaseSeeder` caso o banco esteja vazio ([ADR-002](./docs/adr/002-schema-sql-vs-ef-migrations.md)).
 
 #### 2. Back-end (ASP.NET Core .NET 8)
 ```bash
 cd Código/backend
-dotnet restore
+dotnet restore RadarPecas.sln
+dotnet test RadarPecas.sln
 dotnet run --project RadarPecas.Api --launch-profile http
 ```
 - API Base: `http://localhost:5150`
 - Swagger UI: `http://localhost:5150/swagger`
 - Healthcheck: `http://localhost:5150/api/health`
 
-#### 3. Front-end (React 19 + Vite)
+#### 3. Front-end (React 19 + Vite 8)
 ```bash
 cd Código/frontend/radarpecas-web
 npm install
+npm run typecheck
+npm run lint
+npm run test
 npm run dev -- --port 5173
 ```
 - Aplicação Web: `http://localhost:5173`
 - Auditoria Lighthouse CI (rodar contra `npm run build` + `npm run preview` com a API local ativa): `npm run lighthouse`
+
+---
+
+## 📚 Documentação Técnica (`docs/`)
+
+- [Especificação de Requisitos (SRS)](./docs/srs.md)
+- [Dicionário de Dados](./docs/dicionario-dados.md) · [DER Visual](./AnaliseProjeto/DER.png) · [DER Editável (Mermaid)](./AnaliseProjeto/DER.mmd)
+- [Documentação da API REST](./docs/api.md)
+- [Ranking e Recomendação](./docs/ranking-busca.md)
+- [Privacidade, Segurança e LGPD](./docs/lgpd.md)
+- [Plano de Testes e Evidência RNF04](./docs/plano-de-testes.md)
+- [ADR-001: Haversine/Bounding Box vs PostGIS](./docs/adr/001-geolocalizacao-haversine-vs-postgis.md)
+- [ADR-002: DDL SQL + Inicializador Idempotente vs EF Migrations](./docs/adr/002-schema-sql-vs-ef-migrations.md)
+- [Decisões de Produto](./docs/decisoes-produto.md)
+- [Cronograma, Marcos e Riscos](./Gerenciamento/cronograma-e-riscos.md) · [Registro de Acompanhamento](./Gerenciamento/atas.md)
 
 ---
 
@@ -234,5 +252,6 @@ O banco é pré-carregado com usuários demonstrativos e dados reais de oficinas
 
 ## 🗄️ Scripts do Banco de Dados (`AnaliseProjeto/`)
 
-- **`DB_radarPecas.sql`**: Script DDL oficial com a definição das tabelas, tipos geométricos PostGIS, índices e constraints. É o arquivo consumido pelo `DatabaseInitializer.cs` para criar o banco de forma transparente no primeiro boot.
-- **`dump_radarPecas.sql`**: Snapshot/backup completo gerado via `pg_dump` contendo o schema e uma carga estática de registros. É útil para restauração direta manual em bancos externos via `psql` ou ferramentas visuais (DBeaver, pgAdmin) sem passar pelo inicializador .NET.
+- **`DB_radarPecas.sql`**: Script DDL oficial com a definição das 9 tabelas, extensões (`pgcrypto`, `pg_trgm`), índices B-tree/GIN e constraints. É o arquivo consumido pelo `DatabaseInitializer.cs` no primeiro boot.
+- **`dump_radarPecas.sql`**: Snapshot/backup completo gerado via `pg_dump` contendo o schema e carga de registros para restauração manual via `psql`, DBeaver ou pgAdmin.
+- **`DER.png` / `DER.mmd`**: Diagrama Entidade-Relacionamento visual e sua fonte versionada em Mermaid.

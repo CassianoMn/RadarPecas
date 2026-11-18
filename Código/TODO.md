@@ -32,52 +32,46 @@ A divisão acima é uma organização sugerida para a implementação. A propost
 
 ### Banco de dados
 
-Configure uma instância PostgreSQL com PostGIS habilitado e informe as credenciais na configuração da API.
-
-Exemplo conceitual:
-
-```sql
-CREATE EXTENSION IF NOT EXISTS postgis;
-```
+Configure uma instância PostgreSQL 14+ com extensões padrão (`pgcrypto`, `pg_trgm`) conforme [ADR-001](../docs/adr/001-geolocalizacao-haversine-vs-postgis.md) e [ADR-002](../docs/adr/002-schema-sql-vs-ef-migrations.md), e informe as credenciais via `DATABASE_URL` ou `ConnectionStrings:DefaultConnection`.
 
 As configurações reais de conexão devem ser mantidas fora do código-fonte, preferencialmente por variáveis de ambiente ou mecanismos de configuração do .NET.
 
 ## Princípios de implementação
 
 1. **Compatibilidade antes de recomendação:** uma oferta incompatível não deve aparecer como resultado recomendado para a motocicleta selecionada.
-2. **Geolocalização no banco:** utilizar PostGIS para operações espaciais em vez de realizar todos os cálculos na aplicação.
-3. **API REST:** manter a comunicação entre front-end e back-end baseada em HTTP/JSON.
-4. **Mobile-First:** priorizar a experiência do motociclista em dispositivos móveis.
-5. **Separação de responsabilidades:** manter regras de negócio fora dos controllers.
-6. **Segurança:** não armazenar senhas em texto puro e não versionar credenciais.
-7. **Validação:** validar dados recebidos pela API antes de persistí-los.
+2. **Geolocalização no banco:** executar *bounding box* + Haversine traduzido em SQL no PostgreSQL em vez de carregar toda a base em memória.
+3. **API REST:** manter a comunicação entre front-end e back-end baseada em HTTP/JSON (`ApiResponse<T>`).
+4. **Mobile-First:** priorizar a experiência do motociclista em dispositivos móveis e redes 4G (RNF04 <= 5s).
+5. **Separação de responsabilidades:** manter regras de negócio fora dos controllers e modularizar abas/componentes.
+6. **Segurança:** não armazenar senhas em texto puro, não logar PII e não versionar credenciais.
+7. **Validação:** validar dados recebidos pela API antes de persistí-los (`400`/`401`/`403`/`404`/`422`).
 8. **Código modular:** favorecer componentes e serviços pequenos, testáveis e documentados.
 
 
 ## 1. Estrutura inicial
 
-- [x] Criar solução .NET 8 para o back-end.
-- [x] Criar projetos separados para API, domínio, aplicação e infraestrutura.
-- [x] Criar projeto React 18 + TypeScript + Vite.
-- [x] Configurar ESLint/formatter no front-end.
-- [x] Configurar tratamento global de erros no back-end.
-- [x] Criar configuração de ambientes Development e Production.
+- [x] Criar solução .NET 8 (`RadarPecas.sln`) para o back-end.
+- [x] Criar projetos separados para API, domínio, aplicação, infraestrutura e testes.
+- [x] Criar projeto React 19 + TypeScript + Vite 8.
+- [x] Configurar ESLint/formatter/typecheck no front-end.
+- [x] Configurar tratamento global de erros no back-end + Serilog estruturado.
+- [x] Criar configuração de ambientes Development e Production (Vercel + Render + Supabase).
 - [x] Configurar .gitignore para .NET, Node, IDEs e arquivos de ambiente.
 - [x] Criar arquivo .env.example sem credenciais reais.
-- [x] Configurar CORS para comunicação entre front-end e API.
+- [x] Configurar CORS fail-closed para comunicação entre front-end e API.
 
 ## 2. Banco de dados
 
-### PostgreSQL + PostGIS
+### PostgreSQL (`DECIMAL` + Haversine SQL + `pg_trgm`)
 
-- [x] Criar banco PostgreSQL para desenvolvimento.
-- [x] Habilitar extensão PostGIS.
-- [x] Criar migrations iniciais.
-- [x] Configurar conexão do ASP.NET Core com PostgreSQL.
-- [x] Criar índices para campos utilizados em buscas frequentes.
-- [x] Criar índice espacial GiST para localização das lojas.
+- [x] Criar banco PostgreSQL para desenvolvimento (`radarPecas`).
+- [x] Documentar decisão Haversine/B-tree vs PostGIS (`docs/adr/001-geolocalizacao-haversine-vs-postgis.md`).
+- [x] Formalizar DDL canônico + inicializador idempotente (`AnaliseProjeto/DB_radarPecas.sql` + `DatabaseInitializer`).
+- [x] Configurar conexão do ASP.NET Core com PostgreSQL (Npgsql).
+- [x] Criar índices B-tree e GIN (`pg_trgm`) para buscas frequentes.
+- [x] Criar índice composto `(ativa, latitude, longitude)` para pré-filtro geográfico.
 - [x] Criar seed inicial para modelos de motocicletas.
-- [x] Criar seed de categorias de peças.
+- [x] Criar seed de categorias, peças e lojas em Sergipe.
 
 ### Entidades
 
@@ -181,7 +175,7 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Implementar geocodificação do endereço durante o cadastro/atualização da loja.
 - [x] Integrar Nominatim no back-end.
 - [x] Tratar falha de geocodificação.
-- [x] Implementar consulta PostGIS por raio.
+- [x] Implementar consulta por raio via Bounding Box + Haversine SQL.
 - [x] Calcular distância entre usuário e loja.
 - [x] Retornar distância na API.
 - [x] Implementar ordenação espacial.
@@ -250,25 +244,25 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Exibir marcadores das lojas (pins customizados com nome e ícone).
 - [x] Criar popup com informações básicas da loja (nome, endereço, nota média e link para ver estoque).
 - [x] Exibir preço da oferta no contexto do resultado.
-- [x] Exibir distância aproximada (calculada via API PostGIS).
-- [x] Sincronizar filtros da busca com os marcadores.
+- [x] Exibir distância aproximada (calculada via Haversine SQL na API).
+- [x] Sincronizar filtros da busca com os marcadores e query string da URL.
 - [x] Ajustar o mapa para diferentes tamanhos de tela (responsividade desktop split-screen e mobile).
 - [x] Tratar ausência/perda de localização (fallback gracioso para coordenadas padrão da capital e busca sem coordenadas).
 
 ## 14. Front-end — lojista
 
-- [ ] Implementar login/área do lojista.
-- [ ] Implementar cadastro da loja.
-- [ ] Implementar perfil da loja.
-- [ ] Implementar dashboard.
-- [ ] Implementar gestão de estoque.
-- [ ] Implementar cadastro de produto.
-- [ ] Implementar edição de produto/oferta.
-- [ ] Implementar ativação/inativação de estoque.
-- [ ] Implementar criação de promoções.
-- [ ] Implementar listagem de ofertas ativas.
-- [ ] Implementar produtos mais procurados.
-- [ ] Implementar indicadores de ofertas.
+- [x] Implementar login/área do lojista (`RequireLojista`).
+- [x] Implementar cadastro da loja (`/cadastro` com transação atômica).
+- [x] Implementar perfil da loja (edição, horários por dia e galeria).
+- [x] Implementar dashboard (`LojistaResumoTab` com KPIs reais).
+- [x] Implementar gestão de estoque (`LojistaEstoqueTab`, paginação e exportação CSV).
+- [x] Implementar cadastro de produto (`LojistaNovoProdutoTab`).
+- [x] Implementar edição de produto/oferta (edição inline rápida).
+- [x] Implementar ativação/inativação de estoque/promoção.
+- [x] Implementar criação de promoções (`LojistaCriarOfertaTab` com pré-visualização).
+- [x] Implementar listagem de ofertas ativas (`LojistaOfertasTab`).
+- [x] Implementar produtos mais procurados (`LojistaMaisProcuradosTab`).
+- [x] Implementar indicadores de ofertas (visualizações e cliques reais).
 
 ## 15. Avaliações e métricas
 
@@ -276,9 +270,9 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Validar nota dentro da faixa permitida.
 - [x] Impedir avaliações inválidas/duplicadas conforme regra definida.
 - [x] Calcular média de avaliação da loja.
-- [ ] Exibir avaliação no front-end.
+- [x] Exibir avaliação no front-end (`/lojas/:id`, `/lojas/:id/avaliar` e cards).
 - [x] Registrar visualizações das ofertas.
-- [x] Atualizar `estatisticas_oferta`.
+- [x] Atualizar `estatisticas_oferta` (upsert SQL atômico).
 - [x] Disponibilizar métricas necessárias ao dashboard.
 
 ## 16. Segurança e LGPD
@@ -286,123 +280,83 @@ As configurações reais de conexão devem ser mantidas fora do código-fonte, p
 - [x] Não armazenar senhas em texto puro.
 - [x] Não versionar secrets.
 - [x] Validar dados de entrada da API.
-- [x] Configurar políticas de autorização.
+- [x] Configurar políticas de autorização e proteção horizontal (IDOR).
 - [x] Restringir endpoints administrativos.
 - [x] Solicitar consentimento para localização.
 - [x] Evitar persistir localização do usuário sem necessidade.
-- [x] Revisar exposição de dados pessoais nas respostas da API.
-- [x] Configurar HTTPS no ambiente de produção.
-- [x] Revisar CORS antes da publicação.
+- [x] Revisar exposição de dados pessoais nas respostas da API e logs Serilog.
+- [x] Configurar HTTPS no ambiente de produção e CSP no front-end.
+- [x] Revisar CORS fail-closed antes da publicação.
 
 ## 17. Testes
 
 ### Back-end
 
 - [x] Testar autenticação.
-- [x] Testar autorização por perfil.
+- [x] Testar autorização por perfil e IDOR (`WebApplicationFactory`).
 - [x] Testar CRUD da Garagem Virtual.
 - [x] Testar CRUD de peças.
 - [x] Testar CRUD de estoque.
 - [x] Testar regras de compatibilidade.
 - [x] Testar consultas geoespaciais.
 - [x] Testar ranking de ofertas.
-- [x] Testar validações de entrada.
+- [x] Testar validações de entrada e status HTTP (`401`/`403`/`404`/`422`).
 - [x] Testar tratamento de erros.
 
 ### Front-end
 
-- [ ] Testar componentes críticos.
-- [ ] Testar fluxo de login.
-- [ ] Testar fluxo da Garagem Virtual.
-- [ ] Testar busca de peças.
-- [ ] Testar filtros de compatibilidade.
-- [ ] Testar mapa.
-- [ ] Testar fluxo de gestão do lojista.
+- [x] Testar utilitários e rotas críticas (`Vitest`: `api.test.ts`, `formatters.test.ts`, `RequireAuth.test.tsx`).
+- [x] Validar fluxos ponta a ponta (login, garagem, busca/filtros, mapa, lojista) em desktop e mobile.
 
 ### Validação
 
-- [ ] Executar teste de usabilidade com usuários representativos.
-- [ ] Verificar precisão das recomendações da Garagem Virtual.
-- [ ] Medir tempo das consultas geolocalizadas.
-- [ ] Verificar carregamento do mapa em rede 4G estável.
-- [ ] Corrigir problemas encontrados na validação.
+- [ ] Executar teste de usabilidade com usuários externos representativos (banca/campo).
+- [x] Verificar precisão das recomendações da Garagem Virtual.
+- [x] Medir consultas geolocalizadas e índices no PostgreSQL.
+- [x] Verificar carregamento do app e mapa em rede Slow 4G (Lighthouse CI <= 5s).
+- [x] Corrigir problemas encontrados na validação.
 
 ## 18. Qualidade e manutenção
 
 - [x] Padronizar nomenclatura do código.
-- [x] Remover código duplicado.
-- [x] Adicionar documentação às regras de negócio complexas.
-- [x] Configurar análise estática/lint.
+- [x] Remover código duplicado (`formatMoneyBR`, `parseHorariosEditor`, extensão única nos controllers).
+- [x] Adicionar documentação às regras de negócio complexas (`docs/`).
+- [x] Configurar análise estática/lint (`tsc`, `eslint`).
 - [x] Revisar queries SQL.
 - [x] Revisar índices do banco.
 - [x] Revisar tratamento de exceções.
-- [x] Revisar logs.
+- [x] Revisar logs (`Serilog` estruturado).
 - [x] Criar README de setup atualizado.
-- [x] Criar documentação da API.
-- [ ] Revisar configuração de produção.
+- [x] Criar documentação da API (`docs/api.md`).
+- [x] Revisar configuração de produção (Vercel + Render + Supabase).
 
-## 19. MVP — ordem sugerida de implementação
+## 19. Marcos de entrega
 
 ### Fase 1 — Fundação
 
-- [x] Estrutura do back-end.
-- [x] Estrutura do front-end.
-- [x] PostgreSQL + PostGIS.
-- [x] Migrations.
+- [x] Estrutura do back-end e front-end.
+- [x] PostgreSQL + DDL canônico + inicializador idempotente.
 - [x] Configuração de ambiente.
-- [ ] Comunicação front-end ↔ API.
+- [x] Comunicação front-end ↔ API.
 
-### Fase 2 — Acesso
+### Fase 2 a 4 — Acesso, Dados e Busca
 
-- [x] Usuário.
-- [x] Lojista.
-- [x] Autenticação.
-- [x] Autorização.
+- [x] Usuário, Lojista, Autenticação e Autorização.
+- [x] Modelos, Garagem Virtual, Peças, Compatibilidades, Lojas e Estoque/Ofertas.
+- [x] Busca textual (`pg_trgm`), filtros, compatibilidade, ordenações e promoções.
 
-### Fase 3 — Dados essenciais
+### Fase 5 — Geolocalização e Interface Pública
 
-- [x] Modelos de motocicletas.
-- [x] Garagem Virtual.
-- [x] Peças.
-- [x] Compatibilidades.
-- [x] Lojas.
-- [x] Estoque/ofertas.
+- [x] Nominatim/Photon, Bounding Box + Haversine SQL, distância e Leaflet com marcadores responsivos.
 
-### Fase 4 — Busca
+### Fase 6 — Interfaces Completas
 
-- [x] Busca textual.
-- [x] Filtros.
-- [x] Compatibilidade.
-- [x] Ordenação por preço.
-- [x] Ordenação por distância.
-- [x] Promoções.
-
-### Fase 5 — Geolocalização
-
-- [x] Nominatim.
-- [x] PostGIS.
-- [x] Consulta por proximidade.
-- [ ] Leaflet.
-- [ ] Marcadores.
-- [x] Distância.
-
-### Fase 6 — Interfaces
-
-- [ ] Fluxo completo do motociclista.
-- [ ] Garagem Virtual.
-- [ ] Detalhes da peça.
-- [ ] Fluxo completo do lojista.
-- [ ] Gestão de estoque.
-- [ ] Dashboard.
+- [x] Fluxo completo do motociclista, Garagem Virtual, Detalhes da peça/oferta e Painel modular do lojista.
 
 ### Fase 7 — Qualidade
 
-- [ ] Testes.
-- [ ] Segurança.
-- [ ] LGPD.
-- [ ] Performance.
-- [ ] Teste de usabilidade.
-- [ ] Correções finais.
+- [x] Testes automatizados (67 back-end + 9 front-end), Segurança/LGPD, Documentação (`docs/`), Performance (RNF04 <= 5s) e correções P1/P2.
+- [ ] Rodada final de usabilidade com usuários representativos pré-banca.
 
 ## Critério de conclusão do MVP
 
