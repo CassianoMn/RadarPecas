@@ -45,7 +45,7 @@ powershell -noprofile -command "$c=New-Object Net.Sockets.TcpClient; try { $r=$c
 if errorlevel 1 (
   echo [AVISO] Postgres nao responde em localhost:5432.
   echo         A API sobe mesmo assim, mas login e busca nao vao funcionar.
-  echo         Suba o banco ^(user radar_user, banco radarpecas_db^) e rode de novo.
+  echo         Suba o banco ^(user postgres, banco radarPecas^) e rode de novo.
   echo.
 )
 
@@ -64,7 +64,7 @@ if not exist "%FRONTEND_DIR%\node_modules" (
   )
   popd
 )
-start "RadarPecas - Frontend" /d "%FRONTEND_DIR%" cmd /k "set VITE_API_BASE_URL=%API_URL%/api&& npm run dev -- --port 5173 --strictPort"
+start "RadarPecas - Frontend" /d "%FRONTEND_DIR%" cmd /k "(set VITE_API_BASE_URL=%API_URL%/api) && npm run dev -- --port 5173 --strictPort"
 
 echo.
 echo Pronto! Aguarde os dois terminais terminarem de compilar e abra:
