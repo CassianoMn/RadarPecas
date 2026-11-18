@@ -32,9 +32,6 @@ public class LojasController : ControllerBase
         return Guid.TryParse(idStr, out var id) ? id : Guid.Empty;
     }
 
-    private static bool IsAcessoNegado(string message) =>
-        message.StartsWith("Acesso negado", StringComparison.OrdinalIgnoreCase);
-
     [HttpGet]
     [EnableRateLimiting("busca")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -97,13 +94,14 @@ public class LojasController : ControllerBase
     [Authorize(Roles = "LOJISTA")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CriarLoja([FromBody] CreateLojaRequest request)
     {
         var userId = GetUserId();
         var result = await _lojaService.CriarLojaAsync(userId, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return CreatedAtAction(nameof(ObterPorId), new { id = result.Data!.Id }, result);
     }
@@ -114,13 +112,13 @@ public class LojasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AtualizarLoja(Guid id, [FromBody] UpdateLojaRequest request)
     {
         var result = await _lojaService.AtualizarLojaAsync(id, request, GetUserId());
         if (!result.Success)
         {
-            if (IsAcessoNegado(result.Message)) return StatusCode(StatusCodes.Status403Forbidden, result);
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -150,13 +148,15 @@ public class LojasController : ControllerBase
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AvaliarLoja(Guid id, [FromBody] CriarAvaliacaoRequest request)
     {
         var userId = GetUserId();
         var result = await _avaliacaoService.AvaliarLojaAsync(userId, id, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -171,8 +171,7 @@ public class LojasController : ControllerBase
         var result = await _lojaService.ObterDashboardLojistaAsync(id, GetUserId());
         if (!result.Success)
         {
-            if (IsAcessoNegado(result.Message)) return StatusCode(StatusCodes.Status403Forbidden, result);
-            return NotFound(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }

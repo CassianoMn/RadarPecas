@@ -50,13 +50,15 @@ public class GaragemController : ControllerBase
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AdicionarMoto([FromBody] AddGaragemMotoRequest request)
     {
         var userId = GetUserId();
         var result = await _garagemService.AdicionarMotoAsync(userId, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return CreatedAtAction(nameof(ObterMoto), new { id = result.Data!.Id }, result);
     }
@@ -65,13 +67,14 @@ public class GaragemController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AtualizarMoto(Guid id, [FromBody] UpdateGaragemMotoRequest request)
     {
         var userId = GetUserId();
         var result = await _garagemService.AtualizarMotoAsync(userId, id, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -85,7 +88,7 @@ public class GaragemController : ControllerBase
         var result = await _garagemService.RemoverMotoAsync(userId, id);
         if (!result.Success)
         {
-            return NotFound(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }

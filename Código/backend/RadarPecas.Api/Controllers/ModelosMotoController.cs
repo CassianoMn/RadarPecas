@@ -51,12 +51,13 @@ public class ModelosMotoController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Criar([FromBody] CreateModeloMotoRequest request)
     {
         var result = await _modeloMotoService.CriarModeloAsync(request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return CreatedAtAction(nameof(ObterPorId), new { id = result.Data!.Id }, result);
     }

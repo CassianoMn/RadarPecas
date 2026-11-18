@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,12 +14,26 @@ using RadarPecas.Application.Interfaces;
 using RadarPecas.Application.Services;
 using RadarPecas.Infrastructure.Data;
 using RadarPecas.Infrastructure.Services;
+using Serilog;
+using Serilog.Events;
 
 // Garantir consistência na interpretação de números decimais (ponto flutuante) em query strings
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Logging estruturado sem PII (não loga corpos de requisição nem tokens de Authorization)
+builder.Host.UseSerilog((context, _, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+});
 
 // 1. Configuração da Conexão com o PostgreSQL (sem fallback com senha: falhe cedo e explícito)
 var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
@@ -178,15 +193,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// 6. Inicialização do Banco de Dados e Seed
+// 6. Inicialização do Banco de Dados e Seed (somente em provedor relacional)
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<RadarPecasDbContext>();
-        logger.LogInformation("Verificando estrutura do banco de dados...");
-        await DatabaseInitializer.InitializeAsync(dbContext, logger);
+        if (dbContext.Database.IsRelational())
+        {
+            logger.LogInformation("Verificando estrutura do banco de dados...");
+            await DatabaseInitializer.InitializeAsync(dbContext, logger);
+        }
     }
     catch (Exception ex)
     {
@@ -194,8 +212,29 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 7. Middleware Global de Tratamento de Erros
+// 7. Middleware Global de Tratamento de Erros e Logging HTTP estruturado
 app.UseMiddleware<GlobalExceptionMiddleware>();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.GetLevel = (httpContext, _, ex) =>
+    {
+        if (ex is not null || httpContext.Response.StatusCode >= 500)
+            return LogEventLevel.Error;
+        if (httpContext.Request.Path.StartsWithSegments("/api/health"))
+            return LogEventLevel.Debug;
+        return httpContext.Response.StatusCode >= 400
+            ? LogEventLevel.Warning
+            : LogEventLevel.Information;
+    };
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var userId = httpContext.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!string.IsNullOrWhiteSpace(userId))
+            diagnosticContext.Set("UserId", userId);
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+    };
+});
 
 // 8. Pipeline HTTP
 if (app.Environment.IsDevelopment())
@@ -233,3 +272,5 @@ app.MapGet("/api/health", () => Results.Ok(new
 .WithOpenApi();
 
 app.Run();
+
+public partial class Program { }

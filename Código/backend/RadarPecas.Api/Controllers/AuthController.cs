@@ -27,13 +27,11 @@ public class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request);
         if (!result.Success)
         {
-            // Credenciais inválidas ou ausentes: 401 (o front exibe result.Message).
-            if (result.Message.StartsWith("Credenciais inválidas", StringComparison.OrdinalIgnoreCase)
-                || result.Message.StartsWith("E-mail e senha", StringComparison.OrdinalIgnoreCase))
+            if (result.Message.StartsWith("E-mail e senha", StringComparison.OrdinalIgnoreCase))
             {
                 return Unauthorized(result);
             }
-            return BadRequest(result);
+            return this.ToFailureResult(result, allowUnauthorized: true);
         }
         return Ok(result);
     }
@@ -41,12 +39,13 @@ public class AuthController : ControllerBase
     [HttpPost("register-motociclista")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> RegisterMotociclista([FromBody] RegisterMotociclistaRequest request)
     {
         var result = await _authService.RegisterMotociclistaAsync(request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -54,12 +53,13 @@ public class AuthController : ControllerBase
     [HttpPost("register-lojista")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> RegisterLojista([FromBody] RegisterLojistaRequest request)
     {
         var result = await _authService.RegisterLojistaAsync(request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -80,7 +80,7 @@ public class AuthController : ControllerBase
         var result = await _authService.GetProfileAsync(userId);
         if (!result.Success)
         {
-            return NotFound(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -90,6 +90,8 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -101,7 +103,7 @@ public class AuthController : ControllerBase
         var result = await _authService.UpdateProfileAsync(userId, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }

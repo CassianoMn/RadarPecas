@@ -31,6 +31,23 @@ public class RadarPecasDbContext : DbContext, IApplicationDbContext
     public DbSet<AvaliacaoLoja> AvaliacoesLoja => Set<AvaliacaoLoja>();
     public DbSet<EstatisticaOferta> EstatisticasOferta => Set<EstatisticaOferta>();
 
+    public bool IsRelationalDatabase => Database.IsRelational();
+
+    public async Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Database.IsRelational())
+        {
+            await action(cancellationToken);
+            return;
+        }
+
+        await using var transaction = await Database.BeginTransactionAsync(cancellationToken);
+        await action(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     public Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters) =>
         Database.ExecuteSqlRawAsync(sql, parameters);
 
