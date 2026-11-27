@@ -23,15 +23,6 @@ public class EstoqueController : ControllerBase
         return Guid.TryParse(idStr, out var id) ? id : Guid.Empty;
     }
 
-    private static bool IsAcessoNegado(string message) =>
-        message.StartsWith("Acesso negado", StringComparison.OrdinalIgnoreCase);
-
-    private IActionResult FalhaEstoque<T>(RadarPecas.Application.DTOs.Common.ApiResponse<T> result)
-    {
-        if (IsAcessoNegado(result.Message)) return StatusCode(StatusCodes.Status403Forbidden, result);
-        return BadRequest(result);
-    }
-
     [HttpGet("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -40,7 +31,7 @@ public class EstoqueController : ControllerBase
         var result = await _estoqueService.ObterPorIdAsync(id);
         if (!result.Success)
         {
-            return NotFound(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -50,12 +41,14 @@ public class EstoqueController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AdicionarEstoque([FromBody] CreateEstoqueRequest request)
     {
         var result = await _estoqueService.AdicionarEstoqueAsync(request, GetUserId());
         if (!result.Success)
         {
-            return FalhaEstoque(result);
+            return this.ToFailureResult(result);
         }
         return CreatedAtAction(nameof(ObterPorId), new { id = result.Data!.Id }, result);
     }
@@ -66,12 +59,13 @@ public class EstoqueController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AtualizarEstoque(Guid id, [FromBody] UpdateEstoqueRequest request)
     {
         var result = await _estoqueService.AtualizarEstoqueAsync(id, request, GetUserId());
         if (!result.Success)
         {
-            return FalhaEstoque(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -82,12 +76,13 @@ public class EstoqueController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AtualizarPromocao(Guid id, [FromBody] AtualizarPromocaoRequest request)
     {
         var result = await _estoqueService.AtualizarPromocaoAsync(id, request, GetUserId());
         if (!result.Success)
         {
-            return FalhaEstoque(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -103,7 +98,7 @@ public class EstoqueController : ControllerBase
         var result = await _estoqueService.RemoverEstoqueAsync(id, GetUserId());
         if (!result.Success)
         {
-            return FalhaEstoque(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { api } from '../lib/api';
+import { formatMoneyBR } from '../lib/formatters';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { BuscaResultado, OfertaBuscaItem } from '../types';
 import { CheckIcon, ErrorState } from '../components/ui';
@@ -24,10 +25,6 @@ import {
 const PAGE_SIZE = BUSCA_PAGE_SIZE;
 const MARCAS_DISPONIVEIS = ['Vaz', 'Cobreq', 'Fram', 'Pirelli', 'Heliar', 'Mobil', 'Philips', 'DID', 'KMC'];
 const CATEGORIAS_FALLBACK = ['Transmissão', 'Filtros', 'Pneus', 'Óleos', 'Freios', 'Motor', 'Elétrica'];
-
-function formatMoney(valor: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-}
 
 export function BuscaPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -432,7 +429,7 @@ export function BuscaPage() {
                     updateUrlParams((next) => next.delete('precoMaximo'));
                   }}
                 >
-                  Até {formatMoney(precoMaximo)} <X size={13} aria-hidden="true" />
+                  Até {formatMoneyBR(precoMaximo)} <X size={13} aria-hidden="true" />
                 </button>
               )}
               {distanciaPill !== '15km' && (
@@ -627,9 +624,9 @@ export function BuscaPage() {
 
                           {/* Preço */}
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '8px 0' }}>
-                            <span className="price">{formatMoney(item.precoEfetivo)}</span>
+                            <span className="price">{formatMoneyBR(item.precoEfetivo)}</span>
                             {item.precoPromocional && (
-                              <span className="price-strikethrough">{formatMoney(item.precoVenda)}</span>
+                              <span className="price-strikethrough">{formatMoneyBR(item.precoVenda)}</span>
                             )}
                           </div>
 

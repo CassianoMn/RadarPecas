@@ -18,6 +18,10 @@ public interface IApplicationDbContext
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
+    bool IsRelationalDatabase { get; }
+
+    Task ExecuteInTransactionAsync(Func<CancellationToken, Task> action, CancellationToken cancellationToken = default);
+
     /// <summary>Executa SQL bruto (ex.: increments atômicos). Preferir para contadores.</summary>
     Task<int> ExecuteSqlRawAsync(string sql, params object[] parameters);
 

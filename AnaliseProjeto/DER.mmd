@@ -1,0 +1,101 @@
+erDiagram
+    usuarios {
+        UUID id PK
+        VARCHAR nome
+        VARCHAR email UK
+        VARCHAR senha_hash
+        VARCHAR tipo_usuario "MOTOCICLISTA | LOJISTA"
+        TIMESTAMP data_cadastro
+    }
+
+    lojas {
+        UUID id PK
+        UUID usuario_id FK
+        VARCHAR nome_fantasia
+        VARCHAR cnpj UK
+        TEXT endereco_completo
+        DECIMAL latitude
+        DECIMAL longitude
+        VARCHAR telefone_contato
+        VARCHAR email_contato
+        JSONB horarios_funcionamento
+        TEXT foto_perfil_url
+        TEXT_ARRAY galeria_fotos_urls
+        BOOLEAN ativa
+    }
+
+    modelos_moto {
+        SERIAL id PK
+        VARCHAR marca
+        VARCHAR modelo
+        INTEGER ano_inicio
+        INTEGER ano_fim
+    }
+
+    garagem_virtual {
+        UUID id PK
+        UUID usuario_id FK
+        INTEGER modelo_moto_id FK
+        INTEGER ano_fabricacao
+        VARCHAR apelido
+        TEXT foto_moto_url
+    }
+
+    pecas {
+        SERIAL id PK
+        VARCHAR sku UK
+        VARCHAR codigo_ean UK
+        VARCHAR nome
+        TEXT descricao
+        VARCHAR categoria
+        TEXT foto_peca_url
+        JSONB especificacoes
+    }
+
+    compatibilidade_peca_moto {
+        INTEGER peca_id PK,FK
+        INTEGER modelo_moto_id PK,FK
+    }
+
+    estoque_loja {
+        UUID id PK
+        UUID loja_id FK
+        INTEGER peca_id FK
+        INTEGER quantidade_estoque
+        INTEGER alerta_estoque_minimo
+        DECIMAL preco_venda
+        BOOLEAN em_promocao
+        DECIMAL preco_promocional
+        DATE data_inicio_promocao
+        DATE data_fim_promocao
+        TIMESTAMP data_atualizacao
+    }
+
+    avaliacoes_loja {
+        UUID id PK
+        UUID loja_id FK
+        UUID usuario_id FK
+        INTEGER nota "1..5"
+        TEXT comentario
+        BOOLEAN recomenda
+        TIMESTAMP data_avaliacao
+    }
+
+    estatisticas_oferta {
+        UUID id PK
+        UUID estoque_loja_id FK
+        INTEGER visualizacoes
+        INTEGER cliques
+        DATE data_registro "UK com estoque_loja_id"
+    }
+
+    usuarios ||--o{ lojas : "possui"
+    usuarios ||--o{ garagem_virtual : "cadastra"
+    usuarios ||--o{ avaliacoes_loja : "escreve"
+    modelos_moto ||--o{ garagem_virtual : "referencia"
+    modelos_moto ||--o{ compatibilidade_peca_moto : "compativel"
+    pecas ||--o{ compatibilidade_peca_moto : "aplica_em"
+    pecas ||--o{ estoque_loja : "ofertada_em"
+    lojas ||--o{ estoque_loja : "mantem"
+    lojas ||--o{ avaliacoes_loja : "recebe"
+    estoque_loja ||--o{ estatisticas_oferta : "gera_metricas"

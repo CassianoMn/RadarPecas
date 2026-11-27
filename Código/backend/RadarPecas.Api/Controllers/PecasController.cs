@@ -56,12 +56,13 @@ public class PecasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Criar([FromBody] CreatePecaRequest request)
     {
         var result = await _pecaService.CriarPecaAsync(request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return CreatedAtAction(nameof(ObterPorId), new { id = result.Data!.Id }, result);
     }
@@ -73,12 +74,13 @@ public class PecasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Atualizar(int id, [FromBody] UpdatePecaRequest request)
     {
         var result = await _pecaService.AtualizarPecaAsync(id, request);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -90,12 +92,13 @@ public class PecasController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Deletar(int id)
     {
         var result = await _pecaService.DeletarPecaAsync(id);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -104,14 +107,16 @@ public class PecasController : ControllerBase
     [Authorize(Roles = "LOJISTA")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> AdicionarCompatibilidade(int id, [FromBody] CompatibilidadeRequest request)
     {
         var result = await _pecaService.AdicionarCompatibilidadeAsync(id, request.ModeloMotoId);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }
@@ -119,7 +124,7 @@ public class PecasController : ControllerBase
     [HttpDelete("{id:int}/compatibilidades/{modeloMotoId:int}")]
     [Authorize(Roles = "LOJISTA")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> RemoverCompatibilidade(int id, int modeloMotoId)
@@ -127,7 +132,7 @@ public class PecasController : ControllerBase
         var result = await _pecaService.RemoverCompatibilidadeAsync(id, modeloMotoId);
         if (!result.Success)
         {
-            return BadRequest(result);
+            return this.ToFailureResult(result);
         }
         return Ok(result);
     }

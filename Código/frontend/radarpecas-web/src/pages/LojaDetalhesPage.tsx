@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
-import { parseHorariosFuncionamento } from '../lib/formatters';
+import { formatMoneyBR, parseHorariosFuncionamento } from '../lib/formatters';
 import { useAuth } from '../auth/useAuth';
 import type { AvaliacoesResumo, EstoqueItem, Loja, PagedResult } from '../types';
 import { Button, Card, Chip, EmptyState, ErrorState, Field, Loading } from '../components/ui';
@@ -123,10 +123,6 @@ export function LojaDetalhesPage() {
     } finally {
       setEnviandoAvaliacao(false);
     }
-  }
-
-  function formatMoney(valor: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
   if (loadingLoja) {
@@ -407,10 +403,10 @@ export function LojaDetalhesPage() {
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, margin: '4px 0' }}>
-                        <span className="price">{formatMoney(item.precoEfetivo)}</span>
+                        <span className="price">{formatMoneyBR(item.precoEfetivo)}</span>
                         {item.promocaoAtiva && item.precoPromocional && (
                           <span style={{ textDecoration: 'line-through', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                            {formatMoney(item.precoVenda)}
+                            {formatMoneyBR(item.precoVenda)}
                           </span>
                         )}
                       </div>

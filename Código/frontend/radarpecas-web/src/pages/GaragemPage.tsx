@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, ApiError } from '../lib/api';
+import { formatMoneyBR } from '../lib/formatters';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { GaragemItem, OfertaBuscaItem } from '../types';
 import { Button, EmptyState, ErrorState, Loading, TrashIcon, EditIcon } from '../components/ui';
@@ -165,10 +166,6 @@ export function GaragemPage() {
     } finally {
       setSavingEdit(false);
     }
-  }
-
-  function formatMoney(valor: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
   }
 
   return (
@@ -381,11 +378,11 @@ export function GaragemPage() {
                           <div style={{ marginTop: 8 }}>
                             {item.precoPromocional && (
                               <div style={{ fontSize: '0.78rem', textDecoration: 'line-through', color: '#94a3b8' }}>
-                                {formatMoney(item.precoVenda)}
+                                {formatMoneyBR(item.precoVenda)}
                               </div>
                             )}
                             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#006375' }}>
-                              {formatMoney(item.precoEfetivo)}
+                              {formatMoneyBR(item.precoEfetivo)}
                             </div>
                           </div>
                         </div>

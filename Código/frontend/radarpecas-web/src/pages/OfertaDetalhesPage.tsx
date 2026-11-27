@@ -2,6 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Navigation } from 'lucide-react';
 import { api } from '../lib/api';
+import { formatMoneyBR } from '../lib/formatters';
 import { useActiveMoto } from '../context/useActiveMoto';
 import type { OfertaDetalhe } from '../types';
 import { Button, Card, CheckIcon, ErrorState, StarIcon } from '../components/ui';
@@ -42,10 +43,6 @@ export function OfertaDetalhesPage() {
     carregarOferta(controller.signal);
     return () => controller.abort();
   }, [carregarOferta]);
-
-  function formatMoney(valor: number): string {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
-  }
 
   function registrarClique() {
     if (!oferta) return;
@@ -247,10 +244,10 @@ export function OfertaDetalhesPage() {
             {/* Preço e Parcelamento */}
             <div style={{ margin: '14px 0 20px' }}>
               <div style={{ fontSize: '2.1rem', fontWeight: 800, color: '#006375' }}>
-                {formatMoney(oferta.precoEfetivo)}
+                {formatMoneyBR(oferta.precoEfetivo)}
               </div>
               <p style={{ margin: '2px 0 0', fontSize: '0.88rem', color: '#64748b' }}>
-                em até 10x de {formatMoney(precoParcelado)} sem juros
+                em até 10x de {formatMoneyBR(precoParcelado)} sem juros
               </p>
             </div>
 
@@ -379,7 +376,7 @@ export function OfertaDetalhesPage() {
             Preço à vista
           </span>
           <strong style={{ fontSize: '1.25rem', fontWeight: 800, color: '#006375', lineHeight: 1.1 }}>
-            {formatMoney(oferta.precoEfetivo)}
+            {formatMoneyBR(oferta.precoEfetivo)}
           </strong>
         </div>
 

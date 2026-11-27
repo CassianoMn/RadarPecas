@@ -184,8 +184,6 @@ public class AuthService : IAuthService
             DataCadastro = DateTime.UtcNow
         };
 
-        await _context.Usuarios.AddAsync(usuario, cancellationToken);
-
         var rawHorarios = string.IsNullOrWhiteSpace(request.HorariosFuncionamento)
             ? "Segunda a Sexta: 08:00 às 18:00 | Sábado: 08:00 às 13:00 | Domingo: Fechado"
             : request.HorariosFuncionamento.Trim();
@@ -195,7 +193,6 @@ public class AuthService : IAuthService
 
         var loja = new Loja
         {
-            UsuarioId = usuario.Id,
             NomeFantasia = nomeFantasia.Trim(),
             Cnpj = request.Cnpj?.Trim(),
             EnderecoCompleto = request.EnderecoCompleto.Trim(),
@@ -208,8 +205,16 @@ public class AuthService : IAuthService
             Ativa = true
         };
 
-        await _context.Lojas.AddAsync(loja, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        // Persistência atômica de Usuário + Loja para não deixar usuário órfão em caso de falha na loja.
+        await _context.ExecuteInTransactionAsync(async ct =>
+        {
+            await _context.Usuarios.AddAsync(usuario, ct);
+            await _context.SaveChangesAsync(ct);
+
+            loja.UsuarioId = usuario.Id;
+            await _context.Lojas.AddAsync(loja, ct);
+            await _context.SaveChangesAsync(ct);
+        }, cancellationToken);
 
         var token = _jwtTokenService.GenerateToken(usuario, loja);
 

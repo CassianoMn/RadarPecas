@@ -2,8 +2,36 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' http://localhost:5150 http://127.0.0.1:5150 https://radarpecas.onrender.com https://nominatim.openstreetmap.org https://photon.komoot.io ws://localhost:* ws://127.0.0.1:* wss://localhost:*",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'self'",
+  ].join('; '),
+};
+
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5150',
+        changeOrigin: true,
+      },
+    },
+    headers: SECURITY_HEADERS,
+  },
+  preview: {
+    headers: SECURITY_HEADERS,
+  },
   plugins: [
     react(),
     VitePWA({
